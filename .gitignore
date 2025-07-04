@@ -1,3 +1,4 @@
 .vnev/
 dashboard.py
 .env
+db.sqlite3
