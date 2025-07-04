@@ -1,0 +1,189 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}
+{{ title|default:"Главная страница" }}
+{% endblock title %}
+
+{% block main %}
+<div class="container mt-4 mb-4"> {# Добавлен mb-4 #}
+    <div class="row g-4 mb-4"> {# g-4 добавляет отступы между колонками #}
+
+        {# --- Карта Дата и Время --- #}
+        <div class="col-md-5 col-lg-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body text-center d-flex flex-column justify-content-center align-items-center">
+                    <div class="mb-3">
+                        <h5 class="card-title text-primary mb-1"><i class="bi bi-calendar-event me-2"></i>Дата</h5>
+                        <div class="fs-4 fw-bold text-dark" id="date">--.--.----</div> {# Убрал btn классы #}
+                    </div>
+                    <div>
+                        <h5 class="card-title text-success mb-1"><i class="bi bi-clock me-2"></i>Время</h5>
+                        <div class="fs-4 fw-bold text-dark" id="time">--:--:--</div> {# Убрал btn классы #}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {# --- Карта Основные Действия --- #}
+        <div class="col-md-7 col-lg-8">
+            <div class="card shadow-sm h-100">
+                 <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-cursor-fill me-2"></i>Действия</h5>
+                 </div>
+                <div class="card-body d-flex flex-column flex-sm-row justify-content-around align-items-center gap-3">
+                    <a href="{% url 'search_med_card_get_url' %}" class="btn btn-info btn-lg w-100 w-sm-auto px-4 py-2 rounded-3 shadow-sm text-white fw-bold"> {# Добавлен fw-bold #}
+                        <i class="bi bi-search me-2"></i>ПОИСК
+                    </a>
+                    <a href="{% url 'create_med_cart_get_url' %}" class="btn btn-warning btn-lg w-100 w-sm-auto px-4 py-2 rounded-3 shadow-sm text-dark fw-bold"> {# Добавлен fw-bold #}
+                        <i class="bi bi-person-plus-fill me-2"></i>СОЗДАТЬ МЕД. КАРТУ
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# --- Карта Навигация по датам --- #}
+    <div class="card shadow-sm mb-4">
+         <div class="card-header">
+             <h5 class="mb-0"><i class="bi bi-calendar-week me-2"></i>Перейти к дате</h5>
+         </div>
+        <div class="card-body">
+            <div class="d-flex flex-wrap justify-content-center align-items-center gap-3">
+                {# Группа кнопок для относительных дат #}
+                <div class="btn-group" role="group" aria-label="Относительные даты">
+                    <a href="?date={{ day_before_yesterday|date:'Y-m-d' }}" class="btn btn-outline-secondary">Позавчера</a>
+                    <a href="?date={{ yesterday|date:'Y-m-d' }}" class="btn btn-outline-secondary">Вчера</a>
+                    <a href="?date={{ today|date:'Y-m-d' }}" class="btn btn-outline-secondary {% if selected_date == today %}active{% endif %}">Сегодня</a>
+                </div>
+
+                {# Форма для выбора конкретной даты #}
+                <form id="date-select-form" class="d-flex gap-2" action="" method="get">
+                    <input id="selected_date" name="date" type="date" class="form-control" value="{{ selected_date|date:'Y-m-d' }}" style="max-width: 180px;">
+                    <button id="go" type="submit" class="btn btn-primary">Перейти</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    {# --- Секция История звонков (зависит от типа пользователя) --- #}
+    {% if user.is_authenticated %} {# Добавил общую проверку аутентификации #}
+        {% if is_staff_user %}
+            {# --- Вид для Администратора (is_staff) --- #}
+            <h3 class="text-center mb-3">Все звонки за {{ selected_date|date:"d F Y" }}</h3>
+
+            {% for operator, operator_calls in calls_by_operator %}
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0 text-primary">
+                            <i class="bi bi-person-badge-fill me-2"></i>
+                            Оператор:
+                            {% if operator %}
+                                {{ operator.get_full_name|default:operator.username }}
+                            {% else %}
+                                <span class="fst-italic text-muted">Не назначен</span>
+                            {% endif %}
+                            <span class="badge bg-secondary ms-2">{{ operator_calls|length }} звонк{{ operator_calls|length|pluralize:"ов,а,ов" }}</span>
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-striped table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th scope="col">#ID</th>
+                                        <th scope="col">Пациент (ФИО)</th>
+                                        <th scope="col">Телефон</th>
+                                        <th scope="col">Комментарий</th>
+                                        <th scope="col">Время звонка</th>
+                                        <th scope="col">Действие</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                {% for call in operator_calls %}
+                                    <tr>
+                                        <th scope="row">{{ call.id }}</th>
+                                        <td>{{ call.med_card|default:"-" }}</td> {# Отображаем __str__ из MedCard #}
+                                        <td>{{ call.phone_number|default:"-" }}</td>
+                                        <td>{{ call.comment|default:""|truncatewords:15 }}</td>
+                                        <td>{{ call.created_at|date:"H:i:s" }}</td> {# Только время, т.к. дата в заголовке #}
+                                        <td>
+                                            <a href="{% url 'call_detail_url' call.id %}" class="btn btn-sm btn-outline-primary">
+                                                <i class="bi bi-telephone-forward-fill me-1"></i>Детали
+                                            </a>
+                                        </td>
+                                    </tr>
+                                {% endfor %} {# Конец цикла по звонкам оператора #}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            {% empty %}
+                 <div class="alert alert-warning text-center" role="alert">
+                     <i class="bi bi-exclamation-triangle me-2"></i>За выбранную дату {{ selected_date|date:"d.m.Y" }} звонков не найдено.
+                 </div>
+            {% endfor %} {# Конец цикла по операторам #}
+
+        {% else %}
+            {# --- Вид для Обычного оператора --- #}
+            <div class="card shadow-sm mb-4">
+                 <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-telephone-inbound-fill me-2"></i>Мои звонки за {{ selected_date|date:"d F Y" }}
+                    </h5>
+                 </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-striped table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th scope="col">#ID</th>
+                                    <th scope="col">Пациент (ФИО)</th>
+                                    <th scope="col">Телефон</th>
+                                    <th scope="col">Комментарий</th>
+                                    <th scope="col">Время звонка</th>
+                                    <th scope="col">Действие</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            {% for call in calls %}
+                                <tr>
+                                    <th scope="row">{{ call.id }}</th>
+                                    <td>{{ call.med_card|default:"-" }}</td> {# Отображаем __str__ из MedCard #}
+                                    <td>{{ call.phone_number|default:"-" }}</td>
+                                    <td>{{ call.comment|default:""|truncatewords:15 }}</td>
+                                    <td>{{ call.created_at|date:"H:i:s" }}</td> {# Только время #}
+                                    <td>
+                                        <a href="{% url 'call_detail_url' call.id %}" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-telephone-forward-fill me-1"></i>Детали
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="6" class="text-center fst-italic text-muted py-3"> {# Обновлен colspan #}
+                                        <i class="bi bi-exclamation-circle me-2"></i>У вас нет звонков за выбранную дату.
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        {% endif %} {# Конец if is_staff_user #}
+    {% endif %} {# Конец if user.is_authenticated #}
+</div>
+{% endblock main %}
+
+{% block scripts %}
+{# Подключение ваших стандартных скриптов (предполагается, что там есть Bootstrap JS) #}
+{% include 'components/_scripts.html' %}
+
+{# Подключение скрипта для обновления даты/времени #}
+<script src="{% static 'med_app/js/datetime.js' %}"></script>
+
+{# Скрипт для datepicker больше не нужен, т.к. используется форма #}
+
+{% endblock scripts %}

@@ -1,0 +1,152 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}
+{{ title|default:"Детали звонка" }}
+{% endblock title %}
+
+{% block main %}
+<div class="container mt-4 mb-4">
+    <div class="row g-4 mb-4 align-items-stretch"> {# align-items-stretch для одинаковой высоты карточек #}
+
+        {# --- Карта: Мед. карта --- #}
+        <div class="col-lg-7">
+            <div class="card h-100 shadow-sm border-light"> {# Добавил h-100 #}
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-file-earmark-person-fill me-2"></i>Медицинская карта пациента</h5>
+                </div>
+                <div class="card-body d-flex flex-column flex-sm-row align-items-center">
+                    <div class="flex-shrink-0 mb-3 mb-sm-0 text-center">
+                        <img src="{% static 'med_app/images/123.webp' %}"
+                             alt="Фото пациента {{ call.med_card.last_name|default:'' }}"
+                             class="img-thumbnail rounded-circle" width="140" height="140"
+                             style="object-fit: cover; border-width: 3px;"
+                             onerror="this.onerror=null; this.src='https://placehold.co/140x140/E0E0E0/B0B0B0?text=Фото';">
+                    </div>
+                    <div class="flex-grow-1 ms-sm-4">
+                        <div class="row">
+                            <div class="col-sm-6">
+                                <p class="mb-1"><strong class="text-muted">Имя:</strong><br>
+                                    {{ call.med_card.first_name|default:"-" }}</p>
+                                <p class="mb-1"><strong class="text-muted">Фамилия:</strong><br>
+                                    {{ call.med_card.last_name|default:"-" }}</p>
+                                <p class="mb-0"><strong class="text-muted">Отчество:</strong><br>
+                                    {{ call.med_card.surname|default:"-" }}</p>
+                            </div>
+                            <div class="col-sm-6 mt-2 mt-sm-0">
+                                <p class="mb-1"><strong class="text-muted">Дата рождения:</strong><br>
+                                    {{ call.med_card.birth_date|date:"d.m.Y"|default:"-" }}</p>
+                                <p class="mb-1"><strong class="text-muted">Город:</strong><br>
+                                    {{ call.med_card.city|default:"-" }}</p>
+                                <p class="mb-0"><strong class="text-muted">Район:</strong><br>
+                                    {{ call.med_card.district|default:"-" }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-light text-end border-top-0"> {# Сделал фон светлым #}
+                    <a href="{% url 'med_card_profile_url' call.med_card.id %}" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-file-earmark-text-fill me-1"></i> Полная мед. карта
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        {# --- Карта: Оператор --- #}
+        <div class="col-lg-5">
+            <div class="card h-100 shadow-sm border-light"> {# Добавил h-100 #}
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="bi bi-person-badge-fill me-2"></i>Оператор</h5>
+                </div>
+                <div class="card-body d-flex flex-column align-items-center justify-content-center">
+                    <div class="mb-3">
+                        {# Используем плейсхолдер, т.к. фото оператора обычно нет #}
+                        <img src="https://placehold.co/120x120/E0E0E0/B0B0B0?text=Оператор" alt="Фото оператора"
+                             class="rounded-circle" width="120" height="120">
+                    </div>
+                    {# Отображаем данные оператора, который принял звонок (call.operator) #}
+                    {% with operator=call.operator %}
+                    {% if operator %}
+                    <h6 class="mb-1">{{ operator.get_full_name|default:"Имя не указано" }}</h6>
+                    <p class="text-muted mb-0">@{{ operator.username }}</p>
+                    {% else %}
+                    <p class="text-muted fst-italic mb-0">Оператор не назначен</p>
+                    {% endif %}
+                    {% endwith %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# --- Карта: Детали Звонка --- #}
+    <div class="card shadow-sm mb-4 border-light">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-telephone-inbound-fill me-2"></i>Детали звонка #{{ call.id }}</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+
+                <table class="table table-bordered table-striped table-hover align-middle mb-0">
+                    <thead class="table-light">
+                    <tr>
+                        <th scope="col">ID Звонка</th>
+                        <th scope="col">Телефон</th>
+                        <th scope="col">Комментарий</th>
+                        <th scope="col">Дата и время</th>
+                        <th scope="col">Запись звонка</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr>
+                        <th scope="row">{{ call.id }}</th>
+                        <td>{{ call.phone_number|default:"-" }}</td>
+                        <td>{{ call.comment|default:"Нет комментария" }}</td>
+                        <td>{{ call.created_at|date:"d.m.Y H:i:s" }}</td>
+                        <td>
+                            {% if call.recording_path %} {# Убедимся, что путь вообще есть #}
+                            <audio controls>
+                                <source src="{% url 'serve_call_recording_url' call.id %}" type="audio/wav">
+                                Ваш браузер не поддерживает элемент audio.
+                            </audio>
+                            {% else %}
+                            Запись отсутствует.
+                            {% endif %}
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    {# --- Секция: Заданные вопросы --- #}
+    <h3 class="text-center mb-4 mt-3"><i class="bi bi-patch-question-fill me-2"></i>Заданные вопросы</h3>
+    {% for call_question in call_questions %}
+    <div class="card mb-4 shadow-sm border-light">
+        <div class="card-header bg-light">
+            {# Используем иконку для отдела #}
+            <h5 class="mb-0"><i class="bi bi-building me-2"></i>Отдел: {{ call_question.department.name }}</h5>
+        </div>
+        <div class="card-body p-0"> {# Убираем padding у body, чтобы список прилегал к краям #}
+            {% if call_question.questions.all %}
+            <ul class="list-group list-group-flush"> {# list-group-flush убирает границы #}
+                {% for question in call_question.questions.all %}
+                <li class="list-group-item">
+                    <i class="bi bi-dot me-1"></i>{{ question.question }}
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <div class="p-3 text-muted fst-italic">Вопросов по этому отделу не выбрано.</div>
+            {% endif %}
+        </div>
+    </div>
+    {% empty %}
+    <div class="alert alert-secondary text-center" role="alert">
+        <i class="bi bi-info-circle me-2"></i>Во время этого звонка не было зафиксировано вопросов по отделам.
+    </div>
+    {% endfor %}
+
+</div>
+
+{% endblock main %}

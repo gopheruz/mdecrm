@@ -1,0 +1,178 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}
+{{ title }}
+{% endblock title %}
+
+{% block main %}
+<div class="container mt-4 mb-4"> {# Добавлен отступ снизу #}
+    <div class="row justify-content-center">
+        <div class="col-md-10 col-lg-9"> {# Увеличена ширина для двух колонок #}
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-person-plus-fill me-2"></i>Создать мед. карту
+                    </h5>
+                </div>
+                <div class="card-body p-4"> {# Увеличен padding #}
+                    <form action="{% url 'create_med_cart_post_url' %}" method="post">
+                        {% csrf_token %}
+
+                        {# ВАЖНО: Подключение JavaScript для ChainedForeignKey #}
+                        {{ form.media.js }}
+
+                        {# Вывод общих ошибок формы #}
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger" role="alert">
+                                {% for error in form.non_field_errors %}
+                                    {{ error }}<br>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+
+                        <div class="row">
+                            {# --- Левая колонка: Персональные данные --- #}
+                            <div class="col-md-6">
+                                <fieldset class="mb-4 p-3 border rounded">
+                                    <legend class="fs-6 fw-bold mb-3">Личные данные</legend>
+                                    
+                                    {# Поле Фамилия #}
+                                    <div class="mb-3">
+                                        <label for="{{ form.last_name.id_for_label }}" class="form-label">{{ form.last_name.label }}</label>
+                                        {{ form.last_name }} {# Виджет TextInput с классом form-control из формы #}
+                                        {% if form.last_name.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {% for error in form.last_name.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                    
+                                    {# Поле Имя #}
+                                    <div class="mb-3">
+                                        <label for="{{ form.first_name.id_for_label }}" class="form-label">{{ form.first_name.label }}</label>
+                                        {{ form.first_name }} {# Виджет TextInput с классом form-control из формы #}
+                                        {% if form.first_name.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {% for error in form.first_name.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+
+                                    {# Поле Отчество #}
+                                    <div class="mb-3">
+                                        <label for="{{ form.surname.id_for_label }}" class="form-label">{{ form.surname.label }}</label>
+                                        {{ form.surname }} {# Виджет TextInput с классом form-control из формы #}
+                                        {% if form.surname.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {% for error in form.surname.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+
+                                    {# Поле Телефон #}
+                                    <div class="mb-3">
+                                        <label for="{{ form.phone_number.id_for_label }}" class="form-label">{{ form.phone_number.label }}</label>
+                                        {{ form.phone_number }} {# Виджет TextInput с классом form-control из формы #}
+                                        {% if form.phone_number.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {% for error in form.phone_number.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+
+                                    {# Поле Дата рождения #}
+                                    <div class="mb-3">
+                                        <label for="{{ form.birth_date.id_for_label }}" class="form-label">{{ form.birth_date.label }}</label>
+                                        {{ form.birth_date }} {# Виджет DateInput с классом form-control и type=date из формы #}
+                                        {% if form.birth_date.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {% for error in form.birth_date.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </fieldse
+System: t>
+                            </div>
+
+                            {# --- Правая колонка: Адрес --- #}
+                            <div class="col-md-6">
+                                {# Секция Город #}
+                                <fieldset class="mb-4 p-3 border rounded">
+                                    <legend class="fs-6 fw-bold mb-3">Город</legend>
+                                    {# Поле выбора существующего города #}
+                                    <div class="mb-3">
+                                        <label for="{{ form.city.id_for_label }}" class="form-label">{{ form.city.label }}</label>
+                                        {{ form.city }} {# Виджет Select с классом form-control из формы #}
+                                        {% if form.city.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {% for error in form.city.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                        {% endif %}
+                                        {% if form.city.help_text %}
+                                            <small class="form-text text-muted">{{ form.city.help_text }}</small>
+                                        {% endif %}
+                                    </div>
+
+                                    {# Поле ввода нового города #}
+                                    <div class="mb-3">
+                                        <label for="{{ form.new_city_name.id_for_label }}" class="form-label">{{ form.new_city_name.label }}</label>
+                                        {{ form.new_city_name }} {# Виджет TextInput с классом form-control и placeholder из формы #}
+                                        {% if form.new_city_name.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {% for error in form.new_city_name.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                        {% endif %}
+                                        {% if form.new_city_name.help_text %}
+                                            <small class="form-text text-muted">{{ form.new_city_name.help_text }}</small>
+                                        {% endif %}
+                                    </div>
+                                </fieldset>
+
+                                {# Секция Район #}
+                                <fieldset class="mb-4 p-3 border rounded">
+                                    <legend class="fs-6 fw-bold mb-3">Район</legend>
+                                    {# Поле выбора существующего района (Chained) #}
+                                    <div class="mb-3">
+                                        <label for="{{ form.district.id_for_label }}" class="form-label">{{ form.district.label }}</label>
+                                        {{ form.district }} {# Виджет ChainedSelect с классом form-control из формы #}
+                                        {% if form.district.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {% for error in form.district.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                        {% endif %}
+                                        {% if form.district.help_text %}
+                                            <small class="form-text text-muted">{{ form.district.help_text }}</small>
+                                        {% endif %}
+                                    </div>
+
+                                    {# Поле ввода нового района #}
+                                    <div class="mb-3">
+                                        <label for="{{ form.new_district_name.id_for_label }}" class="form-label">{{ form.new_district_name.label }}</label>
+                                        {{ form.new_district_name }} {# Виджет TextInput с классом form-control и placeholder из формы #}
+                                        {% if form.new_district_name.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {% for error in form.new_district_name.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                        {% endif %}
+                                        {% if form.new_district_name.help_text %}
+                                            <small class="form-text text-muted">{{ form.new_district_name.help_text }}</small>
+                                        {% endif %}
+                                    </div>
+                                </fieldset>
+                            </div>
+                        </div>
+
+                        {# Кнопка отправки #}
+                        <div class="d-grid gap-2"> {# Растягиваем кнопку на всю ширину #}
+                            <button type="submit" class="btn btn-primary btn-lg"> {# Кнопка крупнее #}
+                                <i class="bi bi-check-circle me-2"></i>Создать карту
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock main %}

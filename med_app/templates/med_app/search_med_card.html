@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}
+{{ title|default:"Поиск медкарты" }}
+{% endblock title %}
+
+{% block main %}
+<div class="container mt-4 mb-4">
+    {# --- Секция Формы Поиска --- #}
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0"><i class="bi bi-search me-2"></i>Поиск медкарт</h5>
+        </div>
+        <div class="card-body p-4">
+            <form method="post" action="{% url 'search_med_card_post_url' %}">
+                {% csrf_token %}
+                {# Вывод общих ошибок формы #}
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger" role="alert">
+                        {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+                    </div>
+                {% endif %}
+                <div class="row g-3">
+                    {# Поле Фамилия #}
+                    <div class="col-md-2 col-sm-6">
+                        <label for="{{ form.last_name.id_for_label }}" class="form-label">{{ form.last_name.label }}</label>
+                        {{ form.last_name }}
+                        {% if form.last_name.errors %}
+                            <div class="invalid-feedback d-block">{% for error in form.last_name.errors %}{{ error }}{% endfor %}</div>
+                        {% endif %}
+                    </div>
+                    {# Поле Имя #}
+                    <div class="col-md-2 col-sm-6">
+                        <label for="{{ form.first_name.id_for_label }}" class="form-label">{{ form.first_name.label }}</label>
+                        {{ form.first_name }}
+                        {% if form.first_name.errors %}
+                            <div class="invalid-feedback d-block">{% for error in form.first_name.errors %}{{ error }}{% endfor %}</div>
+                        {% endif %}
+                    </div>
+                    {# Поле Отчество #}
+                    <div class="col-md-2 col-sm-6">
+                        <label for="{{ form.surname.id_for_label }}" class="form-label">{{ form.surname.label }}</label>
+                        {{ form.surname }}
+                        {% if form.surname.errors %}
+                            <div class="invalid-feedback d-block">{% for error in form.surname.errors %}{{ error }}{% endfor %}</div>
+                        {% endif %}
+                    </div>
+                    {# Поле Телефон #}
+                    <div class="col-md-2 col-sm-6">
+                        <label for="{{ form.phone_number.id_for_label }}" class="form-label">{{ form.phone_number.label }}</label>
+                        {{ form.phone_number }}
+                        {% if form.phone_number.errors %}
+                            <div class="invalid-feedback d-block">{% for error in form.phone_number.errors %}{{ error }}{% endfor %}</div>
+                        {% endif %}
+                    </div>
+                    {# Поле Дата рождения #}
+                    <div class="col-md-2 col-sm-6">
+                        <label for="{{ form.birth_date.id_for_label }}" class="form-label">{{ form.birth_date.label }}</label>
+                        {{ form.birth_date }}
+                        {% if form.birth_date.errors %}
+                            <div class="invalid-feedback d-block">{% for error in form.birth_date.errors %}{{ error }}{% endfor %}</div>
+                        {% endif %}
+                    </div>
+                    {# Кнопка Поиск #}
+                    <div class="col-md-2 col-sm-6 d-flex align-items-end">
+                        <button type="submit" class="btn btn-info text-white fw-bold w-100">
+                            <i class="bi bi-search me-1"></i>Поиск
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {# --- Секция Результатов Поиска --- #}
+    {% if results is not None %}
+    <div class="card shadow-sm">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-table me-2"></i>Результаты поиска</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered table-striped table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th scope="col">ID</th>
+                            <th scope="col">Фамилия</th>
+                            <th scope="col">Имя</th>
+                            <th scope="col">Отчество</th>
+                            <th scope="col">Телефон</th>
+                            <th scope="col">Дата рождения</th>
+                            <th scope="col">Город</th>
+                            <th scope="col">Район</th>
+                            <th scope="col">Действие</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for med_card in results %}
+                    <tr>
+                        <td>{{ med_card.id }}</td>
+                        <td>{{ med_card.last_name|default:"-" }}</td>
+                        <td>{{ med_card.first_name|default:"-" }}</td>
+                        <td>{{ med_card.surname|default:"-" }}</td>
+                        <td>{{ med_card.phone_number|default:"-" }}</td>
+                        <td>{{ med_card.birth_date|date:"d.m.Y"|default:"-" }}</td>
+                        <td>{{ med_card.city|default:"-" }}</td>
+                        <td>{{ med_card.district|default:"-" }}</td>
+                        <td>
+                            <a href="{% url 'med_card_profile_url' med_card.id %}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-eye-fill me-1"></i>Просмотр
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" class="text-center fst-italic text-muted py-3">
+                            <i class="bi bi-exclamation-circle me-2"></i>По вашему запросу ничего не найдено.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock main %}

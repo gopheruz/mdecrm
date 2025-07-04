@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}
+{{ title|default:"Все мед. карты" }}
+{% endblock title %}
+
+{% block main %}
+<div class="container mt-4">
+    <h2 class="mb-4">{{ title }}</h2>
+    <table class="table table-striped table-bordered table-hover">
+        <thead>
+            <tr>
+                <th>№</th>
+                <th>ФИО</th>
+                <th>Дата рождения</th>
+                <th>Город</th>
+                <th>Район</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for med_card in med_cards %}
+                <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td>
+                        <a href="{% url 'med_card_profile_url' med_card.id %}">
+                            {{ med_card.last_name }} {{ med_card.first_name }} {{ med_card.surname }}
+                        </a>
+                    </td>
+                    <td>{{ med_card.birth_date|date:"d.m.Y" }}</td>
+                    <td>{{ med_card.city.name|default:"-" }}</td>
+                    <td>{{ med_card.district.name|default:"-" }}</td>
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center">Медицинские карты не найдены.</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock main %}

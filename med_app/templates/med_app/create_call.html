@@ -1,0 +1,203 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Создание звонка{% endblock title %}
+
+{% block styles %}
+{{ block.super }}
+<style>
+    .call-question-form {
+        border: 1px solid #ddd;
+        padding: 15px;
+        margin-bottom: 15px;
+        border-radius: 5px;
+        background-color: #f9f9f9;
+        position: relative;
+    }
+    .remove-form {
+        position: absolute;
+        top: 5px;
+        right: 10px;
+        font-size: 1.2em;
+        border: none;
+        background: none;
+        padding: 0;
+    }
+    .chained-fk, .chained-m2m {
+        width: 100%;
+    }
+    .form-control {
+        margin-bottom: 1rem;
+    }
+</style>
+{{ formset.media.css }}
+{% endblock styles %}
+
+{% block main %}
+<div class="container d-flex justify-content-center">
+    <div class="col-11 mt-4">
+        <div class="card shadow-lg">
+            <div class="card-body">
+                <h2 class="card-title mb-4 text-center">Создание звонка</h2>
+
+                <form method="post" id="call-form">
+                    {% csrf_token %}
+
+                    <div class="mb-3">
+                        {{ call_form.phone_number.label_tag }}
+                        {{ call_form.phone_number }}
+                    </div>
+
+                    <div class="mb-3">
+                        {{ call_form.ip_operator.label_tag }}
+                        {{ call_form.ip_operator }}
+                    </div>
+
+                    <div class="mb-4">
+                        {{ call_form.comment.label_tag }}
+                        {{ call_form.comment }}
+                    </div>
+
+                    <hr>
+
+                    <h4>Вопросы</h4>
+                    <div id="formset-container">
+                        {{ formset.management_form }}
+                        {% for form in formset %}
+                        <div class="question-block mb-3 p-3 border rounded">
+                            {{ form.id }}
+                            {% if form.instance.pk %}{{ form.DELETE }}{% endif %}
+                            <div class="row">
+                                <div class="col-md-6">
+                                    {{ form.department.label_tag }}
+                                    {{ form.department }}
+                                </div>
+                                <div class="col-md-6">
+                                    {{ form.questions.label_tag }}
+                                    {{ form.questions }}
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-danger btn-sm mt-2 remove-form">Удалить</button>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <button type="button" id="add-form" class="btn btn-success btn-sm mt-2">
+                        + Добавить отдел
+                    </button>
+
+                    <div class="mt-4">
+                        <button type="submit" class="btn btn-primary">Сохранить</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="empty-form" style="display:none;">
+    <div class="question-block mb-3 p-3 border rounded">
+        {{ formset.empty_form.id }}
+        <div class="row">
+            <div class="col-md-6">
+                {{ formset.empty_form.department.label_tag }}
+                {{ formset.empty_form.department }}
+            </div>
+            <div class="col-md-6">
+                {{ formset.empty_form.questions.label_tag }}
+                {{ formset.empty_form.questions }}
+            </div>
+        </div>
+        <button type="button" class="btn btn-danger btn-sm mt-2 remove-form">Удалить</button>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+$(document).ready(function() {
+    const formsetPrefix = '{{ formset.prefix }}';
+    let formCount = $('#id_' + formsetPrefix + '-TOTAL_FORMS').val();
+    let maxForms = $('#id_' + formsetPrefix + '-MAX_NUM_FORMS').val();
+
+    $('#add-form').click(function() {
+        if (formCount >= maxForms) {
+            alert('Достигнуто максимальное количество форм');
+            return;
+        }
+
+        const newForm = $('#empty-form').html()
+            .replace(/__prefix__/g, formCount)
+            .replace(/<script>/g, '')
+            .replace(/<\/script>/g, '');
+
+        $('#formset-container').append(newForm);
+        $('#id_' + formsetPrefix + '-TOTAL_FORMS').val(++formCount);
+        initChainedFields($('#formset-container').children().last());
+        updateFormIndices();
+    });
+
+    $('#formset-container').on('click', '.remove-form', function() {
+        const formBlock = $(this).closest('.question-block');
+        const deleteCheckbox = formBlock.find('input[id$="-DELETE"]');
+
+        if (deleteCheckbox.length) {
+            deleteCheckbox.prop('checked', true);
+            formBlock.hide();
+        } else {
+            formBlock.remove();
+            formCount--;
+            $('#id_' + formsetPrefix + '-TOTAL_FORMS').val(formCount);
+        }
+        updateFormIndices();
+    });
+
+    function updateFormIndices() {
+        $('.question-block:visible').each(function(index) {
+            $(this).find('input, select').each(function() {
+                const name = $(this).attr('name').replace(/-\d+-/, '-' + index + '-');
+                $(this).attr('name', name);
+                const id = $(this).attr('id').replace(/-\d+-/, '-' + index + '-');
+                $(this).attr('id', id);
+            });
+
+            $(this).find('label').each(function() {
+                const forAttr = $(this).attr('for').replace(/-\d+-/, '-' + index + '-');
+                $(this).attr('for', forAttr);
+            });
+        });
+    }
+
+    function initChainedFields(element) {
+        const departmentSelect = element.find('select[id$="-department"]');
+        const questionsSelect = element.find('select[id$="-questions"]');
+
+        departmentSelect.change(function() {
+            const deptId = $(this).val();
+            questionsSelect.html('<option value="">Загрузка...</option>');
+
+            if (deptId) {
+                $.getJSON("{% url 'get_questions' %}", {department_id: deptId}, function(data) {
+                    questionsSelect.empty();
+                    $.each(data, function(i, item) {
+                        questionsSelect.append($('<option>', {
+                            value: item.id,
+                            text: item.question
+                        }));
+                    });
+                }).fail(function() {
+                    questionsSelect.empty().append('<option value="">Ошибка загрузки</option>');
+                });
+            } else {
+                questionsSelect.empty().append('<option value="">Сначала выберите отдел</option>');
+            }
+        });
+    }
+
+    $('.question-block').each(function() {
+        initChainedFields($(this));
+    });
+});
+</script>
+{% endblock %}

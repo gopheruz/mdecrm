@@ -1,0 +1,446 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load custom_filters %}
+
+{% block title %}
+{{ title }}
+{% endblock title %}
+
+{% block main %}
+<div class="container mt-3 mb-3">
+    <ul class="nav nav-tabs" id="myTab" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="operators-tab" data-bs-toggle="tab" data-bs-target="#operators"
+                    type="button" role="tab" aria-controls="operators" aria-selected="true">
+                Отчет по операторам
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="questions-tab" data-bs-toggle="tab" data-bs-target="#questions" type="button"
+                    role="tab" aria-controls="questions" aria-selected="false">
+                Отчет по вопросам
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="visits-tab" data-bs-toggle="tab" data-bs-target="#visits" type="button"
+                    role="tab" aria-controls="visits" aria-selected="false">
+                Отчет по посещениям
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content p-3 border border-top-0 rounded-bottom" id="myTabContent">
+        <!-- Вкладка отчетов по операторам -->
+        <div class="tab-pane fade show active" id="operators" role="tabpanel" aria-labelledby="operators-tab">
+            <h3 class="mt-3">Отчет по операторам</h3>
+
+            <form method="post" action="{% url 'operator_report_url' %}" data-tab="operators">
+                {% csrf_token %}
+                <div class="row g-3 align-items-center mb-3">
+                    <div class="col-auto">
+                        {{ operator_form.operator.label_tag }}
+                    </div>
+                    <div class="col-md-4">
+                        {{ operator_form.operator }}
+                    </div>
+                    <div class="col-auto">
+                        {{ operator_form.start_date.label_tag }}
+                    </div>
+                    <div class="col-md-2">
+                        {{ operator_form.start_date }}
+                    </div>
+                    <div class="col-auto">
+                        {{ operator_form.end_date.label_tag }}
+                    </div>
+                    <div class="col-md-2">
+                        {{ operator_form.end_date }}
+                    </div>
+                    <div class="col-auto">
+                        <button type="submit" name="generate_report" class="btn btn-primary">Составить отчет</button>
+                    </div>
+                    <div class="col-auto">
+                        <button type="submit" name="export_excel" class="btn btn-success">Экспорт в Excel</button>
+                    </div>
+                </div>
+            </form>
+
+            {% if calls %}
+            <div class="mt-4">
+                <h4>Детализация звонков</h4>
+                <div class="table-responsive">
+                    <table class="table table-striped table-bordered">
+                        <thead class="table-dark">
+                        <tr>
+                            <th>№</th>
+                            <th>Дата и время</th>
+                            <th>ФИО Пациента</th>
+                            <th>Дата рождения</th>
+                            <th>Адрес</th>
+                            <th>Вопросы</th>
+                            <th>Комментарии</th>
+                            <th>Запись звонка</th>
+                            <th>Оператор</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {% for call in calls %}
+                        <tr>
+                            <td>{{ forloop.counter }}</td>
+                            <td>{{ call.created_at|date:"d.m.Y H:i" }}</td>
+                            <td>
+                                {% if call.med_card %}
+                                {{ call.med_card.last_name }} {{ call.med_card.first_name }} {{ call.med_card.surname }}
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if call.med_card and call.med_card.birth_date %}
+                                {{ call.med_card.birth_date|date:"d.m.Y" }}
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if call.med_card and call.med_card.city and call.med_card.district %}
+                                {{ call.med_card.city.name }}, {{ call.med_card.district.name }}
+                                {% elif call.med_card and call.med_card.city %}
+                                {{ call.med_card.city.name }}
+                                {% elif call.med_card and call.med_card.district %}
+                                {{ call.med_card.district.name }}
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if call.call_questions.exists %}
+                                <button type="button" class="btn btn-info btn-sm" data-bs-toggle="modal"
+                                        data-bs-target="#questionsModal" data-call-id="{{ call.id }}">
+                                    Вопросы
+                                </button>
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                            <td>{{ call.comment|default:"-" }}</td>
+                            <td>
+                                {% if call.recording_path %}
+                                <audio controls>
+                                    <source src="{{ call.recording_path }}" type="audio/wav">
+                                </audio>
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if call.operator %}
+                                {{ call.operator.get_full_name|default:call.operator.username }}
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                {% if daily_calls %}
+                <h4 class="mt-4">Сводка звонков по дням</h4>
+                <table class="table table-striped table-bordered">
+                    <thead>
+                    <tr>
+                        <th>№</th>
+                        <th>Дата</th>
+                        <th>Количество звонков</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for day_data in daily_calls %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td>{{ day_data.created_at__date|date:"d.m.Y" }}</td>
+                        <td>{{ day_data.count }}</td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+                {% endif %}
+            </div>
+            {% elif request.method == 'POST' and operator_form.errors %}
+            <div class="alert alert-danger mt-4">
+                {% for field in operator_form %}
+                {% if field.errors %}
+                <p><strong>{{ field.label }}:</strong> {{ field.errors|join:", " }}</p>
+                {% endif %}
+                {% endfor %}
+
+                {% if operator_form.non_field_errors %}
+                {% for error in operator_form.non_field_errors %}
+                <p>{{ error }}</p>
+                {% endfor %}
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+
+
+        <!-- Вкладка отчетов по вопросам -->
+        <div class="tab-pane fade" id="questions" role="tabpanel" aria-labelledby="questions-tab">
+            <h3 class="mt-3">Отчет по вопросам</h3>
+
+            <form method="post" action="{% url 'questions_report_url' %}" data-tab="questions">
+                {% csrf_token %}
+                <div class="row g-3 align-items-center mb-3">
+                    <div class="col-md-3">
+                        <label for="{{ questions_form.department.id_for_label }}" class="form-label">{{ questions_form.department.label }}</label>
+                        {{ questions_form.department }}
+                    </div>
+                    <div class="col-md-2">
+                        <label for="{{ questions_form.start_date.id_for_label }}" class="form-label">{{ questions_form.start_date.label }}</label>
+                        {{ questions_form.start_date }}
+                    </div>
+                    <div class="col-md-2">
+                        <label for="{{ questions_form.end_date.id_for_label }}" class="form-label">{{ questions_form.end_date.label }}</label>
+                        {{ questions_form.end_date }}
+                    </div>
+                    <div class="col-auto align-self-end">
+                        <button type="submit" name="generate_report" class="btn btn-primary">Сформировать отчет</button>
+                    </div>
+                    <div class="col-auto align-self-end">
+                        <button type="submit" name="export_excel" class="btn btn-success">Экспорт в Excel</button>
+                    </div>
+                </div>
+            </form>
+
+            {% if questions_data %}
+            <div class="mt-4">
+                <h4>Результаты отчета</h4>
+                <p>
+                    {% if not start_date and not end_date %}
+                    <strong>Только за сегодня ({{ today|date:"d.m.Y" }})</strong>
+                    {% else %}
+                    {% if start_date %}с <strong>{{ start_date|date:"d.m.Y" }}</strong>{% endif %}
+                    {% if end_date %}по <strong>{{ end_date|date:"d.m.Y" }}</strong>{% endif %}
+                    {% endif %}
+                    {% if selected_department %} | Отделение: <strong>{{ selected_department.name }}</strong>{% endif %}
+                </p>
+
+                <div class="table-responsive">
+                    <table class="table table-striped table-bordered">
+                        <thead class="table-dark">
+                        <tr>
+                            <th>№</th>
+                            <th>Вопрос</th>
+                            <th>Количество</th>
+                            <th>Дата</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {% for item in questions_data %}
+                        <tr>
+                            <td>{{ forloop.counter }}</td>
+                            <td>{{ item.question }}</td>
+                            <td>{{ item.count }}</td>
+                            <td>{{ item.date|date:"d.m.Y" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center">Нет данных за выбранный период</td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="alert alert-info mt-3">
+                    Всего записей: <strong>{{ questions_data|length }}</strong> |
+                    Общее количество упоминаний: <strong>{{ questions_data|sum_attr:"count" }}</strong>
+                </div>
+            </div>
+            {% elif request.method == 'POST' %}
+            <div class="alert alert-info mt-3">
+                Нет данных, соответствующих выбранным критериям.
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Вкладка отчетов по посещениям -->
+        <div class="tab-pane fade" id="visits" role="tabpanel" aria-labelledby="visits-tab">
+            <h3 class="mt-3">Отчет по посещениям</h3>
+
+            <form method="post" action="{% url 'visits_report_url' %}" data-tab="visits">
+                {% csrf_token %}
+                <div class="row g-3 align-items-center mb-3">
+                    <div class="col-md-2">
+                        <label for="{{ visits_form.start_date.id_for_label }}" class="form-label">{{ visits_form.start_date.label }}</label>
+                        {{ visits_form.start_date }}
+                    </div>
+                    <div class="col-md-2">
+                        <label for="{{ visits_form.end_date.id_for_label }}" class="form-label">{{ visits_form.end_date.label }}</label>
+                        {{ visits_form.end_date }}
+                    </div>
+                    <div class="col-auto align-self-end">
+                        <button type="submit" name="generate_report" class="btn btn-primary">Сформировать отчет</button>
+                    </div>
+                    <div class="col-auto align-self-end">
+                        <button type="submit" name="export_excel" class="btn btn-success">Экспорт в Excel</button>
+                    </div>
+                </div>
+            </form>
+
+            {% if visits_data %}
+            <div class="mt-4">
+                <h4>Результаты отчета</h4>
+                <p>
+                    {% if start_date and end_date %}
+                    Период: с <strong>{{ start_date|date:"d.m.Y" }}</strong> по <strong>{{ end_date|date:"d.m.Y" }}</strong>
+                    {% elif start_date %}
+                    Начиная с: <strong>{{ start_date|date:"d.m.Y" }}</strong>
+                    {% elif end_date %}
+                    До: <strong>{{ end_date|date:"d.m.Y" }}</strong>
+                    {% else %}
+                    Последние 30 дней
+                    {% endif %}
+                </p>
+
+                <div class="table-responsive">
+                    <table class="table table-striped table-bordered">
+                        <thead class="table-dark">
+                        <tr>
+                            <th>№</th>
+                            <th>Дата</th>
+                            <th>Количество посещений</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {% for item in visits_data %}
+                        <tr>
+                            <td>{{ forloop.counter }}</td>
+                            <td>{{ item.date|date:"d.m.Y" }}</td>
+                            <td>{{ item.count }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="3" class="text-center">Нет данных за выбранный период</td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="alert alert-info mt-3">
+                    Всего дней: <strong>{{ visits_data|length }}</strong> |
+                    Общее количество посещений: <strong>{{ visits_data|sum_attr:"count" }}</strong>
+                </div>
+            </div>
+            {% elif request.method == 'POST' %}
+            <div class="alert alert-info mt-3">
+                Нет данных, соответствующих выбранным критериям.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+</div>
+
+
+<!-- Модальное окно для вопросов -->
+<div class="modal fade" id="questionsModal" tabindex="-1" aria-labelledby="questionsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="questionsModalLabel">Вопросы по звонку</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="modal-questions-content">
+                    <p>Загрузка вопросов...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock main %}
+
+{% block scripts %}
+{{ block.super }}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Сохраняем активную вкладку при отправке формы
+        const forms = document.querySelectorAll('form[data-tab]');
+
+        forms.forEach(form => {
+            form.addEventListener('submit', function() {
+                const activeTabId = this.dataset.tab;
+                localStorage.setItem('activeTab', activeTabId);
+
+                // Явно активируем текущую вкладку перед отправкой
+                const tabButton = document.getElementById(activeTabId + '-tab');
+                if (tabButton) {
+                    new bootstrap.Tab(tabButton).show();
+                }
+            });
+        });
+
+        // Восстанавливаем активную вкладку при загрузке
+        const activeTab = localStorage.getItem('activeTab');
+        if (activeTab) {
+            const tabButton = document.getElementById(activeTab + '-tab');
+            if (tabButton) {
+                // Добавляем небольшую задержку для корректного переключения
+                setTimeout(() => {
+                    new bootstrap.Tab(tabButton).show();
+                }, 50);
+            }
+        } else {
+            // По умолчанию активируем первую вкладку
+            const firstTab = document.getElementById('operators-tab');
+            if (firstTab) {
+                new bootstrap.Tab(firstTab).show();
+            }
+        }
+
+       // Обработка модального окна вопросов
+        var questionsModal = document.getElementById('questionsModal');
+        if (questionsModal) {
+            questionsModal.addEventListener('show.bs.modal', function(event) {
+                var button = event.relatedTarget;
+                var callId = button.getAttribute('data-call-id');
+                var modalContent = document.getElementById('modal-questions-content');
+                modalContent.innerHTML = '<p>Загрузка вопросов...</p>';
+
+                fetch("{% url 'get_call_questions_ajax' %}?call_id=" + callId)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Ошибка загрузки вопросов');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.questions_data && data.questions_data.length > 0) {
+                            let html = '';
+                            data.questions_data.forEach(item => {
+                                html += `<h5>Отделение: ${item.department}</h5><ul>`;
+                                item.questions.forEach(q => {
+                                    html += `<li>${q.question}</li>`;
+                                });
+                                html += '</ul>';
+                            });
+                            modalContent.innerHTML = html;
+                        } else {
+                            modalContent.innerHTML = '<p>Вопросы для данного звонка отсутствуют.</p>';
+                        }
+                    })
+                    .catch(error => {
+                        modalContent.innerHTML = `<p class="text-danger">Ошибка: ${error.message}</p>`;
+                    });
+            });
+        }
+    });
+</script>
+{% endblock scripts %}

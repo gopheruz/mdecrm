@@ -1,0 +1,10 @@
+
+Django
+django-smart-selects
+numpy
+openpyxl
+pandas
+pillow
+psycopg2-binary
+python-dotenv
+gunicorn

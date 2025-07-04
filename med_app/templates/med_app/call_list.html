@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+
+{% block title %}
+    Список звонков
+{% endblock title %}
+
+{% block main %}
+    <h1>Список звонков</h1>
+
+    <table border="1" cellpadding="5" cellspacing="0">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Имя</th>
+                <th>Фамилия</th>
+                <th>Отчество</th>
+                <th>Дата рождения</th>
+                <th>Адрес</th>
+                <th>Комментарий</th>
+                <th>Запись звонка</th>
+                <th>Вопросы</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for call in calls %}
+                <tr>
+                    <td>{{ call.id }}</td>
+                    <td>{{ call.medcard.first_name }}</td>
+                    <td>{{ call.medcard.last_name }}</td>
+                    <td>{{ call.medcard.surname }}</td>
+                    <td>{{ call.medcard.birth_date }}</td>
+                    <td>{{ call.medcard.city }}, {{ call.medcard.district }}</td>
+                    <td>{{ call.comment }}</td>
+                    <td>{{ call.created_at }}</td>
+                    <td>
+                        {% for qa in call.medcard.department.questions_answers.all %}
+                            <p>{{ qa.question }} - {{ qa.answer }}</p>
+                        {% empty %}
+                            <p>Нет вопросов</p>
+                        {% endfor %}
+                    </td>
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="9">Нет данных о звонках</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock main %}

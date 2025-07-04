@@ -1,0 +1,192 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load custom_filters %}
+
+{% block title %}
+Аналитика - {{ block.super }}
+{% endblock title %}
+
+{% block main %}
+<div class="container mt-4">
+    <ul class="nav nav-tabs" id="analyticsTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="visits-tab" data-bs-toggle="tab"
+                    data-bs-target="#visits" type="button" role="tab"
+                    aria-controls="visits" aria-selected="true">
+                Аналитика посещений
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="calls-tab" data-bs-toggle="tab"
+                    data-bs-target="#calls" type="button" role="tab"
+                    aria-controls="calls" aria-selected="false">
+                Аналитика звонков
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content p-3 border border-top-0 rounded-bottom">
+        <!-- Вкладка посещений -->
+        <div class="tab-pane fade show active" id="visits" role="tabpanel" aria-labelledby="visits-tab">
+            <h4 class="mb-4">Посещения за {{ today }}</h4>
+
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0">По часам</h5>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="visitsHourlyChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0">Части дня</h5>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="visitsPartsChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Вкладка звонков -->
+        <div class="tab-pane fade" id="calls" role="tabpanel" aria-labelledby="calls-tab">
+            <h4 class="mb-4">Звонки за последние 7 дней</h4>
+
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0">Динамика звонков</h5>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="callsDailyChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0">Топ операторов</h5>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="callsOperatorsChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock main %}
+
+{% block scripts %}
+{{ block.super }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Сохраняем активную вкладку
+    const analyticsTabs = document.getElementById('analyticsTabs');
+    if (analyticsTabs) {
+        analyticsTabs.addEventListener('click', function(e) {
+            if (e.target.classList.contains('nav-link')) {
+                localStorage.setItem('activeAnalyticsTab', e.target.id);
+            }
+        });
+
+        // Восстанавливаем активную вкладку
+        const activeTab = localStorage.getItem('activeAnalyticsTab') || 'visits-tab';
+        const tab = new bootstrap.Tab(document.getElementById(activeTab));
+        tab.show();
+    }
+
+    // Графики посещений
+    const visitsHourlyCtx = document.getElementById('visitsHourlyChart');
+    new Chart(visitsHourlyCtx, {
+        type: 'bar',
+        data: {
+            labels: Array.from({length: 24}, (_, i) => i + ':00'),
+            datasets: [{
+                label: 'Количество посещений',
+                data: {{ visits_hourly_data|safe }},
+                backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: { beginAtZero: true }
+            }
+        }
+    });
+
+    const visitsPartsCtx = document.getElementById('visitsPartsChart');
+    new Chart(visitsPartsCtx, {
+        type: 'doughnut',
+        data: {
+            labels: {{ visits_parts_labels|safe }},
+            datasets: [{
+                data: {{ visits_parts_data|safe }},
+                backgroundColor: [
+                    'rgba(75, 192, 192, 0.7)',
+                    'rgba(255, 206, 86, 0.7)',
+                    'rgba(153, 102, 255, 0.7)'
+                ]
+            }]
+        }
+    });
+
+    // Графики звонков
+    const callsDailyCtx = document.getElementById('callsDailyChart');
+    new Chart(callsDailyCtx, {
+        type: 'line',
+        data: {
+            labels: {{ calls_days|safe }},
+            datasets: [{
+                label: 'Звонков',
+                data: {{ calls_counts|safe }},
+                borderColor: 'rgba(255, 99, 132, 1)',
+                backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                tension: 0.1,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: { beginAtZero: true }
+            }
+        }
+    });
+
+    const callsOperatorsCtx = document.getElementById('callsOperatorsChart');
+    new Chart(callsOperatorsCtx, {
+        type: 'bar',
+        data: {
+            labels: {{ calls_by_operator|map_attribute:'operator__username'|safe }},
+            datasets: [{
+                label: 'Звонков',
+                data: {{ calls_by_operator|map_attribute:'count'|safe }},
+                backgroundColor: 'rgba(75, 192, 192, 0.7)'
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            scales: {
+                x: { beginAtZero: true }
+            }
+        }
+    });
+});
+</script>
+{% endblock scripts %}

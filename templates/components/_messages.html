@@ -1,0 +1,46 @@
+{% if messages %}
+
+
+{% for message in messages %}
+
+<div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %}" role="alert">
+  {{ message }}
+</div>
+<style>
+  .alert {
+    transition: opacity 0.5s ease-out;
+  }
+
+  .alert.fade-out {
+    opacity: 0;
+  }
+</style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Получаем все алерты на странице
+    const alertBoxes = document.querySelectorAll('.alert');
+
+    // Применяем логику исчезновения ко всем алертам
+    alertBoxes.forEach(function(alertBox) {
+      // Таймер для начала исчезновения (через 3 секунды)
+      setTimeout(function() {
+        alertBox.classList.add('fade-out');
+
+        // Удаление элемента после завершения анимации (0.5 секунд в данном случае)
+        setTimeout(function() {
+          alertBox.remove();
+        }, 500); // Удалить через 0.5 секунд (время завершения анимации)
+      }, 3000); // Исчезнуть через 3 секунды
+    });
+  });
+</script>
+
+
+
+{% endfor %}
+
+
+
+
+{% endif %}

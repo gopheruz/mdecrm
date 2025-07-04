@@ -1,0 +1,217 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}
+{{ title|default:"Профиль медкарты" }}
+{% endblock title %}
+
+{% block main %}
+<div class="container mt-4 mb-4">
+
+    {# --- Секция Медицинской карты --- #}
+    <div class="row justify-content-center mb-4"> {# Центрируем карточку #}
+        <div class="col-lg-10 col-xl-9"> {# Немного увеличим ширину #}
+            <div class="card shadow-sm border-light"> {# Убрал border-0, добавил border-light #}
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-file-earmark-person-fill me-2"></i>Медицинская карта
+                    </h5>
+                </div>
+                <div class="card-body p-4">
+                    <div class="row align-items-center">
+                        {# Фото #}
+                        <div class="col-md-3 text-center mb-3 mb-md-0">
+                            <img src="{% static 'med_app/images/123.webp' %}"
+                                 alt="Фото пациента {{ med_card.last_name }}"
+                                 class="img-thumbnail rounded-circle"
+                                 width="140" height="140" {# Сделал квадратным для единообразия #}
+                                 style="object-fit: cover; border-width: 3px;"
+                                 onerror="this.onerror=null; this.src='https://placehold.co/140x140/E0E0E0/B0B0B0?text=Фото';"> {# Резервное изображение #}
+                        </div>
+
+                        {# Данные в 2 колонки #}
+                        <div class="col-md-9">
+                            <div class="row">
+                                <div class="col-md-6 mb-3 mb-md-0">
+                                    {# Имя #}
+                                    <div class="d-flex align-items-start mb-2">
+                                        <i class="bi bi-person-fill text-primary me-2 fs-5"></i>
+                                        <div>
+                                            <small class="text-muted d-block">Имя</small>
+                                            <strong class="fs-6">{{ med_card.first_name|default:"-" }}</strong>
+                                        </div>
+                                    </div>
+                                    {# Фамилия #}
+                                    <div class="d-flex align-items-start mb-2">
+                                        <i class="bi bi-person-fill text-primary me-2 fs-5"></i>
+                                        <div>
+                                            <small class="text-muted d-block">Фамилия</small>
+                                            <strong class="fs-6">{{ med_card.last_name|default:"-" }}</strong>
+                                        </div>
+                                    </div>
+                                    {# Отчество #}
+                                    <div class="d-flex align-items-start">
+                                        <i class="bi bi-person-fill text-primary me-2 fs-5"></i>
+                                        <div>
+                                            <small class="text-muted d-block">Отчество</small>
+                                            <strong class="fs-6">{{ med_card.surname|default:"-" }}</strong>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    {# Дата рождения #}
+                                    <div class="d-flex align-items-start mb-2">
+                                        <i class="bi bi-calendar-event text-primary me-2 fs-5"></i>
+                                        <div>
+                                            <small class="text-muted d-block">Дата рождения</small>
+                                            <strong class="fs-6">{{ med_card.birth_date|date:"d.m.Y"|default:"-" }}</strong>
+                                        </div>
+                                    </div>
+                                    {# Город #}
+                                    <div class="d-flex align-items-start mb-2">
+                                        <i class="bi bi-geo-alt-fill text-primary me-2 fs-5"></i>
+                                        <div>
+                                            <small class="text-muted d-block">Город</small>
+                                            <strong class="fs-6">{{ med_card.city|default:"-" }}</strong>
+                                        </div>
+                                    </div>
+                                    {# Район #}
+                                    <div class="d-flex align-items-start mb-2">
+                                        <i class="bi bi-pin-map-fill text-primary me-2 fs-5"></i>
+                                        <div>
+                                            <small class="text-muted d-block">Район</small>
+                                            <strong class="fs-6">{{ med_card.district|default:"-" }}</strong>
+                                        </div>
+                                    </div>
+                                    {# Телефон #}
+                                    <div class="d-flex align-items-start">
+                                        <i class="bi bi-telephone-fill text-primary me-2 fs-5"></i>
+                                        <div>
+                                            <small class="text-muted d-block">Телефон</small>
+                                            <strong class="fs-6">{{ med_card.phone_number|default:"-" }}</strong>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {# Убрали кнопку "Добавить звонок" отсюда, перенесли вниз #}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# --- Секция Истории звонков --- #}
+    <div class="card shadow-sm mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-telephone-inbound-fill me-2"></i>История звонков</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered table-striped table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th scope="col">#ID</th>
+                            <th scope="col">Телефон</th>
+                            <th scope="col">Комментарий</th>
+                            <th scope="col">Дата/Время</th>
+                            <th scope="col">Оператор</th>
+                            <th scope="col">Действие</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for call in calls %}
+                        <tr>
+                            <th scope="row">{{ call.id }}</th>
+                            <td>{{ call.phone_number|default:"-" }}</td>
+                            <td>{{ call.comment|default:""|truncatewords:15 }}</td> {# Увеличил truncatewords #}
+                            <td>{{ call.created_at|date:"d.m.Y H:i" }}</td>
+                            <td>{{ call.operator.get_full_name|default:call.operator.username|default:"Не указан" }}</td>
+                            <td>
+                                <a href="{% url 'call_detail_url' call.id %}" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-telephone-forward-fill me-1"></i>Детали
+                                </a>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center fst-italic text-muted py-3"> {# Обновлен colspan #}
+                                <i class="bi bi-exclamation-circle me-2"></i>Звонков не найдено.
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    {# --- Секция Истории посещений --- #}
+    <div class="card shadow-sm mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-calendar-check-fill me-2"></i>История посещений</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered table-striped table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th scope="col">#ID</th>
+                            <th scope="col">Дата/Время</th>
+                            <th scope="col">Причина</th>
+                            <th scope="col">Заметки</th>
+                            <th scope="col">Зарегистрировал</th>
+                            {# Можно добавить колонку Действие, если нужно #}
+                            {# <th scope="col">Действие</th> #}
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for visit in visits %}
+                        <tr>
+                            <th scope="row">{{ visit.id }}</th>
+                            <td>{{ visit.visit_time|date:"d.m.Y H:i" }}</td>
+                            <td>{{ visit.reason|default:"-" }}</td>
+                            <td>{{ visit.notes|default:"-" }}</td>
+                            <td>{{ visit.operator.get_full_name|default:visit.operator.username|default:"Не указан" }}</td>
+                            {# Пример колонки с действием #}
+                            {# <td><a href="#" class="btn btn-sm btn-outline-info"><i class="bi bi-info-circle-fill me-1"></i>Детали</a></td> #}
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center fst-italic text-muted py-3"> {# Обновлен colspan #}
+                                 <i class="bi bi-exclamation-circle me-2"></i>Посещений не найдено.
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    {# --- Секция Кнопок Действий --- #}
+    <div class="d-flex justify-content-center justify-content-md-end gap-3 mb-4">
+         <a href="{% url 'create_user_call_get_or_post_url' med_card.id %}"
+            class="btn btn-primary">
+             <i class="bi bi-telephone-plus-fill me-1"></i>Добавить звонок
+         </a>
+         <a href="{% url 'create_visit_get_url' med_card.id %}"
+            class="btn btn-success">
+             <i class="bi bi-calendar-plus-fill me-1"></i>Добавить посещение
+         </a>
+    </div>
+
+</div>
+
+<style>
+    .img-thumbnail {
+        border: 2px solid #dee2e6;
+        padding: 0.25rem;
+    }
+    .card {
+        border-radius: 0.5rem;
+    }
+</style>
+
+{% endblock main %}
