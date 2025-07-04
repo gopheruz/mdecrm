@@ -69,18 +69,6 @@
                                             </div>
                                         {% endif %}
                                     </div>
-
-                                    {# Поле Телефон #}
-                                    <div class="mb-3">
-                                        <label for="{{ form.phone_number.id_for_label }}" class="form-label">{{ form.phone_number.label }}</label>
-                                        {{ form.phone_number }} {# Виджет TextInput с классом form-control из формы #}
-                                        {% if form.phone_number.errors %}
-                                            <div class="invalid-feedback d-block">
-                                                {% for error in form.phone_number.errors %}{{ error }}{% endfor %}
-                                            </div>
-                                        {% endif %}
-                                    </div>
-
                                     {# Поле Дата рождения #}
                                     <div class="mb-3">
                                         <label for="{{ form.birth_date.id_for_label }}" class="form-label">{{ form.birth_date.label }}</label>
@@ -88,6 +76,16 @@
                                         {% if form.birth_date.errors %}
                                             <div class="invalid-feedback d-block">
                                                 {% for error in form.birth_date.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                      {# Поле Телефон #}
+                                    <div class="mb-3">
+                                        <label for="{{ form.phone_number.id_for_label }}" class="form-label">{{ form.phone_number.label }}</label>
+                                        {{ form.phone_number }} {# Виджет TextInput с классом form-control из формы #}
+                                        {% if form.phone_number.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {% for error in form.phone_number.errors %}{{ error }}{% endfor %}
                                             </div>
                                         {% endif %}
                                     </div>
@@ -99,7 +97,7 @@ System: t>
                             <div class="col-md-6">
                                 {# Секция Город #}
                                 <fieldset class="mb-4 p-3 border rounded">
-                                    <legend class="fs-6 fw-bold mb-3">Город</legend>
+                                    <legend class="fs-6 fw-bold mb-3">Область</legend>
                                     {# Поле выбора существующего города #}
                                     <div class="mb-3">
                                         <label for="{{ form.city.id_for_label }}" class="form-label">{{ form.city.label }}</label>
