@@ -133,34 +133,46 @@
     {% endif %}
 
     <!-- Auto-refresh for dynamic updates -->
-    <script>
-        function updateDateTime() {
-            const now = new Date();
+   <script>
+    function updateDateTime() {
+        const now = new Date();
 
-            const date = now.toLocaleDateString('ru-RU', {
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit'
+        const date = now.toLocaleDateString('ru-RU', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+        });
+
+        const time = now.toLocaleTimeString('ru-RU', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+        });
+
+        document.getElementById('date').textContent = date;
+        document.getElementById('time').textContent = time;
+    }
+
+    // Function to pause all other audio elements when one starts playing
+    function setupAudioPlayers() {
+        const audios = document.querySelectorAll('audio');
+        audios.forEach(audio => {
+            audio.addEventListener('play', () => {
+                audios.forEach(otherAudio => {
+                    if (otherAudio !== audio) {
+                        otherAudio.pause();
+                    }
+                });
             });
+        });
+    }
 
-            const time = now.toLocaleTimeString('ru-RU', {
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-                hour12: false
-            });
-
-            document.getElementById('date').textContent = date;
-            document.getElementById('time').textContent = time;
-        }
-
-        setInterval(updateDateTime, 1000);
-        updateDateTime();
-
-        setInterval(() => {
-            window.location.reload();
-        }, 30000);
-    </script>
+    // Initialize date/time update and audio player setup
+    setInterval(updateDateTime, 1000);
+    updateDateTime();
+    setupAudioPlayers();
+</script>
 </div>
 {% endblock main %}
 
