@@ -9,14 +9,20 @@ from django.db.models import Prefetch
 from django.db.models import Q
 from django.db.models import Count, F, Case, When, IntegerField
 from django.db.models.functions import ExtractHour, TruncDay
-
 from django.http import HttpResponse
 from openpyxl.styles import Font, Alignment, PatternFill
 from openpyxl.utils import get_column_letter
 from io import BytesIO
+from django.utils import timezone
 import openpyxl
 from openpyxl.workbook import Workbook
-
+from datetime import datetime, timedelta
+from collections import defaultdict
+import paramiko
+import re
+from dotenv import load_dotenv
+import os
+from django.http import StreamingHttpResponse, HttpResponseForbidden, HttpResponseServerError
 from med_app.forms import *
 from med_app.models import *
 
@@ -163,79 +169,135 @@ def get_questions(request):
 def is_staff_or_superuser(user):
     return user.is_staff or user.is_superuser
 
+from django.shortcuts import render
+from django.utils import timezone
+from datetime import datetime, timedelta
+import paramiko
+import re
+from dotenv import load_dotenv
+import os
+from django.http import StreamingHttpResponse, HttpResponseForbidden, HttpResponseServerError
+
 def index_view(request):
-    # --- Начальный контекст и расчет дат (доступно для всех) ---
     context = {
         'title': 'Главная страница',
-        # Устанавливаем значения по умолчанию для переменных, зависящих от аутентификации
         'is_staff_user': False,
-        'calls': [],
-        'calls_by_operator': [],
+        'wav_files': [],
     }
 
-    # Текущая локальная дата для ссылки "Сегодня"
     today = timezone.localtime(timezone.now()).date()
     context['today'] = today
 
-    # Проверка GET-параметра для выбранной даты
     selected_date_str = request.GET.get('date')
     if selected_date_str:
         try:
             selected_date = datetime.strptime(selected_date_str, '%Y-%m-%d').date()
         except ValueError:
-            selected_date = today # По умолчанию сегодня, если дата некорректна
+            selected_date = today
     else:
-        selected_date = today # По умолчанию сегодня, если дата не передана
+        selected_date = today
 
     context['selected_date'] = selected_date
-
-    # Вычисление дат для кнопок "Вчера" и "Позавчера"
     context['yesterday'] = selected_date - timedelta(days=1)
     context['day_before_yesterday'] = selected_date - timedelta(days=2)
 
-    # --- Логика получения данных (только для аутентифицированных) ---
     if request.user.is_authenticated:
-        user = request.user # Получаем текущего пользователя
+        # SFTP ulanish sozlamalari
+        load_dotenv(".env")
+        hostname = os.getenv("HOST")
+        port = int(os.getenv("PORT", 22))
+        username = os.getenv("SSH_USER")
+        password = os.getenv("PASSWORD")
+        base_dir = os.getenv("SFTP_BASE_DIR", "/var/spool/asterisk/monitor")
 
-        # Формирование диапазона дат для запроса (с учетом часового пояса)
-        local_tz = timezone.get_current_timezone()
-        start_of_day = timezone.make_aware(datetime.combine(selected_date, time.min), local_tz)
-        start_of_next_day = timezone.make_aware(datetime.combine(selected_date + timedelta(days=1), time.min), local_tz)
+        client = paramiko.SSHClient()
+        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        
+        try:
+            client.connect(hostname=hostname, port=port, username=username, password=password)
+            sftp = client.open_sftp()
 
-        # Логика в зависимости от типа пользователя
-        if user.is_staff:
-            context['is_staff_user'] = True
-            # Администратор: получаем ВСЕ звонки за выбранный день
-            all_calls = Call.objects.filter(
-                created_at__gte=start_of_day,
-                created_at__lt=start_of_next_day
-            ).select_related('operator', 'med_card', 'med_card__city', 'med_card__district').order_by('operator__username', 'created_at')
+            # Fayl yo'lini tuzish
+            remote_dir = f"{base_dir}/{selected_date.year}/{selected_date.month:02d}/{selected_date.day:02d}"
+            wav_files = []
+            try:
+                wav_files = [
+                    {
+                        'path': os.path.join(remote_dir, entry.filename).replace('\\', '/'),  # Yo‘lni normallashtirish
+                        'filename': entry.filename,
+                        'phone_number': '',
+                        'ip_operator': '',
+                        'call_time': '',
+                    }
+                    for entry in sftp.listdir_attr(remote_dir) if entry.filename.endswith('.wav')
+                ]
+                print(f"DEBUG: Found {len(wav_files)} files in {remote_dir}: {[f['filename'] for f in wav_files]}")
+                
+                # Fayl nomlaridan ma'lumotlarni ajratib olish
+                pattern = r'(exten|out|q-1001)-(\d+)-(\+?\d+)-(\d{8})-(\d{6})-(\d+\.\d{1,3})\.wav'
+                for wav_file in wav_files:
+                    match = re.match(pattern, wav_file['filename'])
+                    if match:
+                        file_prefix, ip_operator, phone_number, date, time, unique_id = match.groups()
+                        wav_file['phone_number'] = f"+{phone_number}" if not phone_number.startswith('+') else phone_number
+                        wav_file['ip_operator'] = ip_operator
+                        wav_file['call_time'] = f"{time[:2]}:{time[2:4]}:{time[4:6]}"
+                        print(f"DEBUG: Parsed {wav_file['filename']}: phone={wav_file['phone_number']}, ip_operator={wav_file['ip_operator']}, time={wav_file['call_time']}")
+                    else:
+                        print(f"DEBUG: Failed to parse filename: {wav_file['filename']}")
 
-            # Группируем звонки по операторам
-            calls_by_operator_dict = defaultdict(list)
-            for call in all_calls:
-                calls_by_operator_dict[call.operator].append(call)
+            except FileNotFoundError:
+                print(f"DEBUG: Directory {remote_dir} not found")
+                wav_files = []
 
-            # Преобразуем в список кортежей и сортируем
-            context['calls_by_operator'] = sorted(
-                calls_by_operator_dict.items(),
-                key=lambda item: item[0].username if item[0] else 'яяя'
-            )
+            sftp.close()
+            client.close()
 
-        else:
-            context['is_staff_user'] = False
-            # Обычный оператор: получаем только ЕГО звонки за выбранный день
-            calls = Call.objects.filter(
-                operator=user,
-                created_at__gte=start_of_day,
-                created_at__lt=start_of_next_day
-            ).select_related('med_card', 'med_card__city', 'med_card__district').order_by('created_at')
-            context['calls'] = calls # Передаем список звонков
+            context['wav_files'] = wav_files
 
-    # Рендерим шаблон с собранным контекстом
+        except Exception as e:
+            print(f"DEBUG: SFTP error: {e}")
+
     return render(request, 'med_app/index.html', context)
 
+def stream_wav_file(request, wav_path):
+    load_dotenv(".env")
+    hostname = os.getenv("HOST")
+    port = int(os.getenv("PORT", 22))
+    username = os.getenv("SSH_USER")
+    password = os.getenv("PASSWORD")
+    base_dir = os.getenv("SFTP_BASE_DIR", "/var/spool/asterisk/monitor")
 
+    # Yo‘lni normallashtirish va xavfsizlik tekshiruvi
+    wav_path = os.path.normpath(wav_path).replace('\\', '/')
+    if not wav_path.startswith(base_dir):
+        return HttpResponseForbidden("Faylga ruxsat yo‘q")
+
+    client = paramiko.SSHClient()
+    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    
+    try:
+        client.connect(hostname=hostname, port=port, username=username, password=password)
+        sftp = client.open_sftp()
+
+        with sftp.open(wav_path, 'rb') as remote_file:
+            def stream():
+                buffer_size = 8192
+                while True:
+                    data = remote_file.read(buffer_size)
+                    if not data:
+                        break
+                    yield data
+
+            response = StreamingHttpResponse(stream(), content_type='audio/wav')
+            response['Content-Disposition'] = f'inline; filename="{wav_path.split('/')[-1]}"'
+            return response
+
+    except Exception as e:
+        print(f"DEBUG: SFTP streaming error: {e}")
+        return HttpResponseServerError("Faylni yuklashda xato")
+    finally:
+        client.close()
 @login_required
 def create_med_cart_get_view(request):
     form = CreateMedCartForm()
@@ -337,8 +399,6 @@ def search_med_card_get_view(request):
         'form': form
     }
     return render(request, 'med_app/search_med_card.html', context)
-
-
 
 
 def search_med_card_post_view(request):

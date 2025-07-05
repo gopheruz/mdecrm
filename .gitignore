@@ -1,4 +1,48 @@
-.vnev/
-dashboard.py
-.env
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Django
+*.log
+*.pot
+*.pyc
+*.pyo
+*.pyd
+*.sqlite3
 db.sqlite3
+
+# Env files
+.env
+*.env
+
+# Virtual environment
+venv/
+ENV/
+env/
+.venv/
+
+# VSCode / IDE
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Migrations (faqat agar umumiy saqlanmasin desa, lekin odatda saqlanadi!)
+# Agar migrationlar saqlansin desa, quyidagilarni o‘chir:
+**/migrations/__pycache__/
+**/migrations/*.pyc
+**/migrations/*.pyo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Static & Media files (agar production build bo'lmasa)
+staticfiles/
+media/
+
+# Node.js files (agar frontend bor bo‘lsa)
+node_modules/
+build/
+dist/

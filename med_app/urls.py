@@ -37,7 +37,7 @@ urlpatterns = [
     path('reports/operator/', operator_report_view, name='operator_report_url'),
     path('reports/questions/', questions_report_view, name='questions_report_url'),
     path('reports/visits/', visits_report_view, name='visits_report_url'),
-
+    path('stream-wav/<path:wav_path>/', stream_wav_file, name='stream_wav_file'),
     # analaytics
     path('analytics/', analytics_view, name='analytics_url'),
 ]
