@@ -170,7 +170,14 @@ def get_questions(request):
 def is_staff_or_superuser(user):
     return user.is_staff or user.is_superuser
 
-
+from django.shortcuts import render
+from django.utils import timezone
+from datetime import datetime, timedelta
+import paramiko
+import re
+from dotenv import load_dotenv
+import os
+from django.http import StreamingHttpResponse, HttpResponseForbidden, HttpResponseServerError
 
 def index_view(request):
     context = {
@@ -196,115 +203,102 @@ def index_view(request):
     context['day_before_yesterday'] = selected_date - timedelta(days=2)
 
     if request.user.is_authenticated:
-        # Local directory configuration
-        base_dir = "/mnt/cdr"
+        # SFTP ulanish sozlamalari
+        load_dotenv(".env")
+        hostname = os.getenv("HOST")
+        port = int(os.getenv("PORT", 22))
+        username = os.getenv("SSH_USER")
+        password = os.getenv("PASSWORD")
+        base_dir = os.getenv("SFTP_BASE_DIR", "/var/spool/asterisk/monitor")
 
-        # Construct the directory path
-        local_dir = os.path.join(base_dir, f"{selected_date.year}", f"{selected_date.month:02d}", f"{selected_date.day:02d}")
-        wav_files = []
+        client = paramiko.SSHClient()
+        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        
         try:
-            if os.path.exists(local_dir):
-                # List all .wav files in the directory that are larger than 44 bytes
-                all_wav_files = []
-                valid_wav_files = []
-                
-                for filename in os.listdir(local_dir):
-                    if filename.endswith('.wav'):
-                        file_path = os.path.join(local_dir, filename)
-                        try:
-                            file_size = os.path.getsize(file_path)
-                            all_wav_files.append(filename)
-                            
-                            # Only include files larger than 44 bytes
-                            if file_size > 44:
-                                valid_wav_files.append({
-                                    'path': f"{selected_date.year}/{selected_date.month:02d}/{selected_date.day:02d}/{filename}",  # Relative path from base_dir
-                                    'filename': filename,
-                                    'phone_number': '',
-                                    'ip_operator': '',
-                                    'call_time': '',
-                                    'file_size': file_size,
-                                })
-                            else:
-                                print(f"DEBUG: Файл {filename} пропущен (размер {file_size} байт <= 44 байт)")
-                        except OSError as e:
-                            print(f"DEBUG: Ошибка получения размера файла {filename}: {e}")
-                
-                wav_files = valid_wav_files
-                print(f"DEBUG: {local_dir} директорияда {len(all_wav_files)} общих файлов, {len(wav_files)} файлов больше 44 байт: {[f['filename'] for f in wav_files]}")
+            client.connect(hostname=hostname, port=port, username=username, password=password)
+            sftp = client.open_sftp()
 
-                # Parse information from filenames  
-                # Pattern for files like: q-1001-938668688-20250701-114609-1751352369.0.wav
-                # or out-889225703-202-20250701-131129-1751357489.152.wav
-                pattern = r'(exten|out|q-1001)-(\d+)-(\+?\d+|\+?anonymous)-(\d{8})-(\d{6})-(\d+(?:\.\d+)?)\.wav'
+            # Fayl yo'lini tuzish
+            remote_dir = f"{base_dir}/{selected_date.year}/{selected_date.month:02d}/{selected_date.day:02d}"
+            wav_files = []
+            try:
+                wav_files = [
+                    {
+                        'path': os.path.join(remote_dir, entry.filename).replace('\\', '/'),  # Yo‘lni normallashtirish
+                        'filename': entry.filename,
+                        'phone_number': '',
+                        'ip_operator': '',
+                        'call_time': '',
+                    }
+                    for entry in sftp.listdir_attr(remote_dir) if entry.filename.endswith('.wav')
+                ]
+                print(f"DEBUG: Found {len(wav_files)} files in {remote_dir}: {[f['filename'] for f in wav_files]}")
+                
+                # Fayl nomlaridan ma'lumotlarni ajratib olish
+                pattern = r'(exten|out|q-1001)-(\d+)-(\+?\d+)-(\d{8})-(\d{6})-(\d+\.\d{1,3})\.wav'
                 for wav_file in wav_files:
                     match = re.match(pattern, wav_file['filename'])
                     if match:
-                        file_prefix, number_part, phone_number, date, time, unique_id = match.groups()
-                        if file_prefix == 'q-1001':
-                            wav_file['phone_number'] = f"+{phone_number}" if phone_number != 'anonymous' and not phone_number.startswith('+') else phone_number
-                            wav_file['ip_operator'] = '1001'
-                        else:
-                            wav_file['phone_number'] = f"+{phone_number}" if phone_number != 'anonymous' and not phone_number.startswith('+') else phone_number
-                            wav_file['ip_operator'] = number_part
+                        file_prefix, ip_operator, phone_number, date, time, unique_id = match.groups()
+                        wav_file['phone_number'] = f"+{phone_number}" if not phone_number.startswith('+') else phone_number
+                        wav_file['ip_operator'] = ip_operator
                         wav_file['call_time'] = f"{time[:2]}:{time[2:4]}:{time[4:6]}"
-                        print(f"DEBUG: {wav_file['filename']} разобран: телефон={wav_file['phone_number']}, ip_operator={wav_file['ip_operator']}, время={wav_file['call_time']}")
+                        print(f"DEBUG: Parsed {wav_file['filename']}: phone={wav_file['phone_number']}, ip_operator={wav_file['ip_operator']}, time={wav_file['call_time']}")
                     else:
-                        print(f"DEBUG: Не удалось разобрать имя файла: {wav_file['filename']}")
+                        print(f"DEBUG: Failed to parse filename: {wav_file['filename']}")
 
-            else:
-                print(f"DEBUG: {local_dir} директория не найдена")
+            except FileNotFoundError:
+                print(f"DEBUG: Directory {remote_dir} not found")
+                wav_files = []
+
+            sftp.close()
+            client.close()
+
+            context['wav_files'] = wav_files
 
         except Exception as e:
-            print(f"DEBUG: Ошибка локальной файловой системы: {e}")
-
-        context['wav_files'] = wav_files
+            print(f"DEBUG: SFTP error: {e}")
 
     return render(request, 'med_app/index.html', context)
 
 def stream_wav_file(request, wav_path):
-    base_dir = "/mnt/cdr"
+    load_dotenv(".env")
+    hostname = os.getenv("HOST")
+    port = int(os.getenv("PORT", 22))
+    username = os.getenv("SSH_USER")
+    password = os.getenv("PASSWORD")
+    base_dir = os.getenv("SFTP_BASE_DIR", "/var/spool/asterisk/monitor")
 
-    # Normalize wav_path and remove leading/trailing slashes
-    wav_path = wav_path.strip('/')
-    
-    # Check if wav_path already contains the base_dir
-    if wav_path.startswith('mnt/cdr/'):
-        # Remove the 'mnt/cdr/' prefix to avoid duplication
-        wav_path = wav_path[8:]  # Remove 'mnt/cdr/' (8 characters)
-    
+    # Yo‘lni normallashtirish va xavfsizlik tekshiruvi
     wav_path = os.path.normpath(wav_path).replace('\\', '/')
-    full_path = os.path.join(base_dir, wav_path).replace('\\', '/')
-
-    # Debug path comparison
-    print(f"DEBUG: wav_path={wav_path}, full_path={full_path}, base_dir={base_dir}")
-
-    # Check if the full path starts with base_dir
-    normalized_full_path = os.path.normpath(full_path)
-    normalized_base_dir = os.path.normpath(base_dir)
-    if not normalized_full_path.startswith(normalized_base_dir):
-        print(f"DEBUG: Taqiqlangan - full_path={normalized_full_path} {normalized_base_dir} bilan boshlanmaydi")
+    if not wav_path.startswith(base_dir):
         return HttpResponseForbidden("Faylga ruxsat yo‘q")
 
+    client = paramiko.SSHClient()
+    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    
     try:
-        if not os.path.exists(full_path):
-            print(f"DEBUG: Fayl topilmadi: {full_path}")
-            return HttpResponseServerError("Fayl topilmadi")
+        client.connect(hostname=hostname, port=port, username=username, password=password)
+        sftp = client.open_sftp()
 
-        if not os.access(full_path, os.R_OK):
-            print(f"DEBUG: Faylga ruxsat yo‘q: {full_path}")
-            return HttpResponseForbidden("Faylni o‘qish uchun ruxsat yo‘q")
+        with sftp.open(wav_path, 'rb') as remote_file:
+            def stream():
+                buffer_size = 8192
+                while True:
+                    data = remote_file.read(buffer_size)
+                    if not data:
+                        break
+                    yield data
 
-        # Use FileResponse for streaming
-        response = FileResponse(open(full_path, 'rb'), content_type='audio/wav')
-        response['Content-Disposition'] = f'inline; filename="{os.path.basename(full_path)}"'
-        print(f"DEBUG: Fayl oqimlash: {full_path}")
-        return response
+            response = StreamingHttpResponse(stream(), content_type='audio/wav')
+            response['Content-Disposition'] = f'inline; filename="{wav_path.split('/')[-1]}"'
+            return response
 
     except Exception as e:
-        print(f"DEBUG: Lokal fayl oqimlash xatosi: {e}")
-        return HttpResponseServerError(f"Faylni yuklashda xato: {str(e)}")
-
+        print(f"DEBUG: SFTP streaming error: {e}")
+        return HttpResponseServerError("Faylni yuklashda xato")
+    finally:
+        client.close()
 @login_required
 def create_med_cart_get_view(request):
     form = CreateMedCartForm()
@@ -990,49 +984,3 @@ def analytics_view(request):
         'calls_by_operator': list(calls_by_operator),
     }
     return render(request, 'med_app/analytics.html', context)
-
-def download_wav_file(request, wav_path):
-    """
-    View для скачивания WAV файлов
-    """
-    base_dir = "/mnt/cdr"
-
-    # Normalize wav_path and remove leading/trailing slashes
-    wav_path = wav_path.strip('/')
-    
-    # Check if wav_path already contains the base_dir
-    if wav_path.startswith('mnt/cdr/'):
-        # Remove the 'mnt/cdr/' prefix to avoid duplication
-        wav_path = wav_path[8:]  # Remove 'mnt/cdr/' (8 characters)
-    
-    wav_path = os.path.normpath(wav_path).replace('\\', '/')
-    full_path = os.path.join(base_dir, wav_path).replace('\\', '/')
-
-    # Debug path comparison
-    print(f"DEBUG: Скачивание - wav_path={wav_path}, full_path={full_path}, base_dir={base_dir}")
-
-    # Check if the full path starts with base_dir
-    normalized_full_path = os.path.normpath(full_path)
-    normalized_base_dir = os.path.normpath(base_dir)
-    if not normalized_full_path.startswith(normalized_base_dir):
-        print(f"DEBUG: Запрещено - full_path={normalized_full_path} не начинается с {normalized_base_dir}")
-        return HttpResponseForbidden("Нет доступа к файлу")
-
-    try:
-        if not os.path.exists(full_path):
-            print(f"DEBUG: Файл не найден: {full_path}")
-            return HttpResponseServerError("Файл не найден")
-
-        if not os.access(full_path, os.R_OK):
-            print(f"DEBUG: Нет доступа к файлу: {full_path}")
-            return HttpResponseForbidden("Нет прав на чтение файла")
-
-        # Use FileResponse for downloading with attachment disposition
-        response = FileResponse(open(full_path, 'rb'), content_type='audio/wav')
-        response['Content-Disposition'] = f'attachment; filename="{os.path.basename(full_path)}"'
-        print(f"DEBUG: Файл скачивается: {full_path}")
-        return response
-
-    except Exception as e:
-        print(f"DEBUG: Ошибка скачивания файла: {e}")
-        return HttpResponseServerError(f"Ошибка скачивания файла: {str(e)}")
