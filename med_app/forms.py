@@ -8,7 +8,16 @@ from smart_selects.form_fields import ChainedModelChoiceField
 from med_app.models import *
 from django.forms import BaseModelFormSet
 
+from django import forms
+from med_app.models import MedCard, City, District
 
+class MedCardForm(forms.ModelForm):
+    class Meta:
+        model = MedCard
+        fields = ['first_name', 'last_name', 'surname', 'phone_number', 'birth_date', 'city', 'district']
+        widgets = {
+            'birth_date': forms.DateInput(attrs={'type': 'date'}),
+        }
 class CreateMedCartForm(forms.ModelForm):
     # Новые поля для ввода названий, если город/район отсутствуют в базе
     new_city_name = forms.CharField(

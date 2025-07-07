@@ -1,4 +1,4 @@
-`{% extends 'base.html' %}
+{% extends 'base.html' %}
 {% load static %}
 
 {% block title %}
@@ -6,7 +6,6 @@
 {% endblock title %}
 
 {% block main %}
-<!DOCTYPE html>
 <div class="container mt-4 mb-4">
     <div class="row g-4 mb-4">
         {# Дата и время карточка #}
@@ -31,100 +30,169 @@
                 <div class="card-header">
                     <h5 class="mb-0"><i class="bi bi-cursor-fill me-2"></i>Действия</h5>
                 </div>
-                <div class="card-body d-flex flex-column flex-sm-row justify-content-around align-items-center gap-3">
-                    <a href="{% url 'search_med_card_get_url' %}"
-                        class="btn btn-info btn-lg w-100 w-sm-auto px-4 py-2 rounded-3 shadow-sm text-white fw-bold">
-                        <i class="bi bi-search me-2"></i>ПОИСК
-                    </a>
-                    <a href="{% url 'create_med_cart_get_url' %}"
-                        class="btn btn-warning btn-lg w-100 w-sm-auto px-4 py-2 rounded-3 shadow-sm text-dark fw-bold">
-                        <i class="bi bi-person-plus-fill me-2"></i>СОЗДАТЬ МЕД. КАРТУ
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    {# Навигация по дате #}
-    <div class="card shadow-sm mb-4">
-        <div class="card-header">
-            <h5 class="mb-0"><i class="bi bi-calendar-week me-2"></i>Переход к дате</h5>
-        </div>
-        <div class="card-body">
-            <div class="d-flex flex-wrap justify-content-center align-items-center gap-3">
-                {# Кнопки для относительных дат #}
-                <div class="btn-group" role="group" aria-label="Относительные даты">
-                    <a href="?date={{ day_before_yesterday|date:'Y-m-d' }}"
-                        class="btn btn-outline-secondary">Позавчера</a>
-                    <a href="?date={{ yesterday|date:'Y-m-d' }}" class="btn btn-outline-secondary">Вчера</a>
-                    <a href="?date={{ today|date:'Y-m-d' }}"
-                        class="btn btn-outline-secondary {% if selected_date == today %}active{% endif %}">Сегодня</a>
-                </div>
-
-                {# Форма для выбора конкретной даты #}
-                <form id="date-select-form" class="d-flex gap-2" action="" method="get">
-                    <input id="selected_date" name="date" type="date" class="form-control"
-                        value="{{ selected_date|date:'Y-m-d' }}" style="max-width: 180px;">
-                    <button id="go" type="submit" class="btn btn-primary">Перейти</button>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    {# История звонков #}
-    {% if user.is_authenticated %}
-    <h3 class="text-center mb-3">Все звонки за {{ selected_date|date:"d F Y" }}</h3>
-    {% if wav_files %}
-    <div class="card shadow-sm mb-4">
-        <div class="card-header bg-light">
-            <h5 class="mb-0 text-primary">
-                <i class="bi bi-telephone-fill me-2"></i>
-                Аудиозаписи за {{ selected_date|date:"d F Y" }}
-                <span class="badge bg-secondary ms-2">{{ wav_files|length }} аудио</span>
-            </h5>
-        </div>
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-bordered table-striped table-hover align-middle mb-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th scope="col">IP Оператор</th>
-                            <th scope="col">Телефон</th>
-                            <th scope="col">Время звонка</th>
-                            <th scope="col">Аудио / Скачать</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for wav_file in wav_files|dictsortreversed:"call_time" %}
-                        <tr>
-                            <td>{{ wav_file.phone_number|default:"-" }}</td>
-                            <td>{{ wav_file.ip_operator|default:"-" }}</td>
-                            <td>{{ wav_file.call_time|default:"-" }}</td>
-                            <td>
-                                <div class="d-flex flex-column flex-sm-row gap-2 align-items-start">
-                                    <audio controls class="mb-2 mb-sm-0">
-                                        <source src="{% url 'stream_wav_file' wav_file.path %}" type="audio/wav">
-                                        Ваш браузер не поддерживает аудио файлы.
-                                    </audio>
-                                    <a href="{% url 'download_wav_file' wav_file.path %}"
-                                        class="btn btn-success btn-sm px-3" download="{{ wav_file.filename }}">
-                                        <i class="bi bi-download me-1"></i>Скачать
-                                    </a>
+                <div class="card-body">
+                    <div class="row g-3">
+                        {# Row 1: Поиск и Создать мед. карту #}
+                        <div class="col-6 d-flex align-items-center">
+                            <a href="{% url 'search_med_card_get_url' %}"
+                                class="btn btn-info btn-lg w-100 px-4 py-2 rounded-3 shadow-sm text-white fw-bold">
+                                <i class="bi bi-search me-2"></i>ПОИСК
+                            </a>
+                        </div>
+                        <div class="col-6 d-flex align-items-center">
+                            <a href="{% url 'create_med_cart_get_url' %}"
+                                class="btn btn-warning btn-lg w-100 px-4 py-2 rounded-3 shadow-sm text-dark fw-bold">
+                                <i class="bi bi-person-plus-fill me-2"></i>СОЗДАТЬ МЕД. КАРТУ
+                            </a>
+                        </div>
+                        {# Row 2: Редактировать мед. карты и Переход к дате #}
+                        <div class="col-6 d-flex align-items-center">
+                            <a href="{% url 'search_med_card_get_url' %}"
+                                class="btn btn-primary btn-lg w-100 px-4 py-2 rounded-3 shadow-sm text-white fw-bold">
+                                <i class="bi bi-pencil-square me-2"></i>РЕДАКТИРОВАТЬ МЕД. КАРТЫ
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <div class="d-flex flex-wrap justify-content-center align-items-center gap-3">
+                                {# Кнопки для относительных дат #}
+                                <div class="btn-group" role="group" aria-label="Относительные даты">
+                                    <a href="?date={{ day_before_yesterday|date:'Y-m-d' }}"
+                                        class=" nltk: btn btn-outline-secondary">Позавчера</a>
+                                    <a href="?date={{ yesterday|date:'Y-m-d' }}"
+                                        class="btn btn-outline-secondary">Вчера</a>
+                                    <a href="?date={{ today|date:'Y-m-d' }}"
+                                        class="btn btn-outline-secondary {% if selected_date == today %}active{% endif %}">Сегодня</a>
                                 </div>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+                                {# Форма для выбора конкретной даты #}
+                                <form id="date-select-form" class="d-flex gap-2" action="" method="get">
+                                    <input id="selected_date" name="date" type="date" class="form-control"
+                                        value="{{ selected_date|date:'Y-m-d' }}" style="max-width: 180px;">
+                                    <button id="go" type="submit" class="btn btn-primary">Перейти</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
-    {% else %}
-    <div class="alert alert-warning text-center" role="alert"></div>
-        <i class="bi bi-exclamation-triangle me-2"></i>Аудиозаписи за выбранную дату {{ selected_date|date:"d.m.Y" }} не
-        найдены.
+
+    {# История звонков и медицинские карты #}
+    {% if user.is_authenticated %}
+    <div class="row g-4">
+        {# История звонков #}
+        <div class="col-lg-6">
+            <h3 class="text-center mb-3">Все звонки за {{ selected_date|date:"d F Y" }}</h3>
+            {% if wav_files %}
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0 text-primary">
+                        <i class="bi bi-telephone-fill me-2"></i>
+                        Аудиозаписи за {{ selected_date|date:"d F Y" }}
+                        <span class="badge bg-secondary ms-2">{{ wav_files|length }} аудио</span>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-striped table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th scope="col">IP Оператор</th>
+                                    <th scope="col">Телефон</th>
+                                    <th scope="col">Время звонка</th>
+                                    <th scope="col">Аудио / Скачать</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for wav_file in wav_files %}
+                                <tr>
+                                    <td>{{ wav_file.ip_operator|default:"-" }}</td>
+                                    <td>{{ wav_file.phone_number|default:"-" }}</td>
+                                    <td>{{ wav_file.call_time|default:"-" }}</td>
+                                    <td>
+                                        <div class="d-flex flex-column flex-sm-row gap-2 align-items-start">
+                                            <audio controls class="mb-2 mb-sm-0">
+                                                <source src="{% url 'stream_wav_file' wav_file.path|slice:'50:' %}" type="audio/wav">
+                                                Ваш браузер не поддерживает аудио файлы.
+                                            </audio>
+                                            <a href="{% url 'download_wav_file' wav_file.path|slice:'50:' %}"
+                                                class="btn btn-success btn-sm px-3" download="{{ wav_file.filename }}">
+                                                <i class="bi bi-download me-1"></i>Скачать
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="4" class="text-center">Аудиозаписи не найдены.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="alert alert-warning text-center" role="alert">
+                <i class="bi bi-exclamation-triangle me-2"></i>Аудиозаписи за выбранную дату {{ selected_date|date:"d.m.Y" }} не найдены.
+            </div>
+            {% endif %}
+        </div>
+
+        {# Медицинские карты #}
+        <div class="col-lg-6">
+            <h3 class="text-center mb-3">Мед. карты за {{ selected_date|date:"d F Y" }}</h3>
+            {% if med_cards %}
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0 text-primary">
+                        <i class="bi bi-person-lines-fill me-2"></i>
+                        Медицинские карты
+                        <span class="badge bg-secondary ms-2">{{ med_cards|length }} карт</span>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-striped table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th scope="col">№</th>
+                                    <th scope="col">ФИО</th>
+                                    <th scope="col">Дата рождения</th>
+                                    <th scope="col">Город</th>
+                                    <th scope="col">Район</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for med_card in med_cards %}
+                                <tr>
+                                    <td>{{ forloop.counter }}</td>
+                                    <td>
+                                        <a href="{% url 'med_card_profile_url' med_card.id %}">
+                                            {{ med_card.last_name }} {{ med_card.first_name }} {{ med_card.surname }}
+                                        </a>
+                                    </td>
+                                    <td>{{ med_card.birth_date|date:"d.m.Y" }}</td>
+                                    <td>{{ med_card.city.name|default:"-" }}</td>
+                                    <td>{{ med_card.district.name|default:"-" }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center">Медицинские карты не найдены.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="alert alert-warning text-center" role="alert">
+                <i class="bi bi-exclamation-triangle me-2"></i>Медицинские карты за выбранную дату {{ selected_date|date:"d.m.Y" }} не найдены.
+            </div>
+            {% endif %}
+        </div>
     </div>
-    {% endif %}
     {% else %}
     <div class="alert alert-danger text-center" role="alert">
         <i class="bi bi-exclamation-circle me-2"></i>Пожалуйста, войдите в систему.
@@ -132,46 +200,43 @@
     {% endif %}
 
     <!-- Auto-refresh for dynamic updates -->
-   <script>
-    function updateDateTime() {
-        const now = new Date();
+    <script>
+        function updateDateTime() {
+            const now = new Date();
+            const date = now.toLocaleDateString('ru-RU', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit'
+            });
+            const time = now.toLocaleTimeString('ru-RU', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            });
+            document.getElementById('date').textContent = date;
+            document.getElementById('time').textContent = time;
+        }
 
-        const date = now.toLocaleDateString('ru-RU', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit'
-        });
-
-        const time = now.toLocaleTimeString('ru-RU', {
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-            hour12: false
-        });
-
-        document.getElementById('date').textContent = date;
-        document.getElementById('time').textContent = time;
-    }
-
-    // Function to pause all other audio elements when one starts playing
-    function setupAudioPlayers() {
-        const audios = document.querySelectorAll('audio');
-        audios.forEach(audio => {
-            audio.addEventListener('play', () => {
-                audios.forEach(otherAudio => {
-                    if (otherAudio !== audio) {
-                        otherAudio.pause();
-                    }
+        // Function to pause all other audio elements when one starts playing
+        function setupAudioPlayers() {
+            const audios = document.querySelectorAll('audio');
+            audios.forEach(audio => {
+                audio.addEventListener('play', () => {
+                    audios.forEach(otherAudio => {
+                        if (otherAudio !== audio) {
+                            otherAudio.pause();
+                        }
+                    });
                 });
             });
-        });
-    }
+        }
 
-    // Initialize date/time update and audio player setup
-    setInterval(updateDateTime, 1000);
-    updateDateTime();
-    setupAudioPlayers();
-</script>
+        // Initialize date/time update and audio player setup
+        setInterval(updateDateTime, 1000);
+        updateDateTime();
+        setupAudioPlayers();
+    </script>
 </div>
 {% endblock main %}
 

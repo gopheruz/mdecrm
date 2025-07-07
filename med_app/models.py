@@ -45,9 +45,13 @@ class MedCard(models.Model):
 
     last_name = models.CharField("Фамилия", max_length=255)
     first_name = models.CharField("Имя", max_length=255)
-    phone_number = models.CharField("Телефон", max_length=13, default=" ")
+    phone_number = models.CharField("Номер телефона", max_length=13, default=" ")
     surname = models.CharField("Отчество", max_length=255)
     birth_date = models.DateField("Дата рождения")
+    created_at = models.DateTimeField(
+        "Дата создания",
+        default=timezone.datetime(2025, 7, 1, tzinfo=timezone.get_current_timezone())
+    )
 
     def __str__(self):
         return f"{self.last_name} {self.first_name} {self.surname}"

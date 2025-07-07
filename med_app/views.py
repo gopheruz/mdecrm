@@ -24,6 +24,9 @@ from openpyxl.workbook import Workbook
 from med_app.forms import *
 from med_app.models import *
 
+from med_app.models import MedCard
+from django.utils import timezone
+from datetime import datetime
 
 @login_required
 def serve_recording_view(request, call_id):
@@ -132,12 +135,21 @@ def get_questions(request):
     questions = Question.objects.filter(department_id=department_id).values('id', 'question')
     return JsonResponse(list(questions), safe=False)
 
-@custom_login_required
+from django.shortcuts import render
+from django.utils import timezone
+from django.db.models import Q
+from datetime import datetime, timedelta
+import os
+import re
+import fnmatch
+from med_app.models import MedCard, Call, Visit
+
 def index_view(request):
     context = {
-        'title': 'Главная страница',
-        'is_staff_user': False,
+        'title': 'Bosh sahifa',
+        'is_staff_user': request.user.is_staff,
         'wav_files': [],
+        'med_cards': [],
     }
 
     today = timezone.localtime(timezone.now()).date()
@@ -147,9 +159,12 @@ def index_view(request):
     if selected_date_str:
         try:
             selected_date = datetime.strptime(selected_date_str, '%Y-%m-%d').date()
+            print(f"DEBUG: GET dan tanlangan sana: {selected_date}")  # Debug
         except ValueError:
+            print(f"DEBUG: Noto‘g‘ri sana formati: {selected_date_str}, standart sifatida bugungi sana")  # Debug
             selected_date = today
     else:
+        print("DEBUG: GET da sana berilmagan, standart sifatida bugungi sana")  # Debug
         selected_date = today
 
     context['selected_date'] = selected_date
@@ -157,71 +172,168 @@ def index_view(request):
     context['day_before_yesterday'] = selected_date - timedelta(days=2)
 
     if request.user.is_authenticated:
-        base_dir = "/mnt/cdr"
+        # .wav fayllarni to‘g‘ridan-to‘g‘ri direktoriyadan olish
+        base_dir = os.path.join(os.getcwd(), 'media/cdr')  # /Users/apple/Desktop/Call_centre/mdecrm/cdr
         local_dir = os.path.join(base_dir, f"{selected_date.year}", f"{selected_date.month:02d}", f"{selected_date.day:02d}")
         wav_files = []
         try:
             if os.path.exists(local_dir):
-                all_wav_files = []
-                valid_wav_files = []
+                print(f"DEBUG: Topilgan direktoriya: {local_dir}, fayllar: {os.listdir(local_dir)}")  # Debug
                 for filename in os.listdir(local_dir):
                     if filename.endswith('.wav'):
-                        file_path = os.path.join(local_dir, filename)
+                        file_path = os.path.join(local_dir, filename).replace('\\', '/')
                         try:
                             file_size = os.path.getsize(file_path)
-                            all_wav_files.append(filename)
-                            if file_size > 44:
-                                valid_wav_files.append({
-                                    'path': f"{selected_date.year}/{selected_date.month:02d}/{selected_date.day:02d}/{filename}",
+                            print(f"DEBUG: hajmi: {file_size} bayt")  # Debug
+                            if file_size > 44:  # Fayl hajmi > 44 bayt
+                                wav_file = {
+                                    'path': file_path,
                                     'filename': filename,
-                                    'phone_number': '',
-                                    'ip_operator': '',
-                                    'call_time': '',
+                                    'phone_number': '-',
+                                    'ip_operator': '-',
+                                    'call_time': '-',
                                     'file_size': file_size,
-                                })
-                        except OSError:
-                            pass
-                wav_files = valid_wav_files
-                pattern = r'(exten|out|q-1001)-(\d+)-(\+?\d+|\+?anonymous)-(\d{8})-(\d{6})-(\d+(?:\.\d+)?)\.wav'
-                for wav_file in wav_files:
-                    match = re.match(pattern, wav_file['filename'])
-                    if match:
-                        file_prefix, number_part, phone_number, date, time, unique_id = match.groups()
-                        if file_prefix == 'q-1001':
-                            wav_file['phone_number'] = f"+{phone_number}" if phone_number != 'anonymous' and not phone_number.startswith('+') else phone_number
-                            wav_file['ip_operator'] = '1001'
-                        else:
-                            wav_file['phone_number'] = f"+{phone_number}" if phone_number != 'anonymous' and not phone_number.startswith('+') else phone_number
-                            wav_file['ip_operator'] = number_part
-                        wav_file['call_time'] = f"{time[:2]}:{time[2:4]}:{time[4:6]}"
-            context['wav_files'] = wav_files
-        except Exception:
-            pass
+                                }
 
+                                # out va q-1001 fayllar uchun moslashgan regex
+                                pattern = r'(out|q-1001)-(\d+)(?:-(\d+))?-(\d{8})-(\d{6})-(\d+\.\d+)\.wav'
+                                match = re.match(pattern, filename)
+
+                                if match:
+                                    file_prefix, first_num, second_num, date, time, unique_id = match.groups()
+
+                                    if file_prefix == 'out':
+                                        phone_number = first_num
+                                        ip_operator = second_num or '-'
+                                    else:  # q-1001
+                                        phone_number = first_num
+                                        ip_operator = "1001"
+
+                                    wav_file['phone_number'] = f"+{phone_number}" if phone_number != '-' and not phone_number.startswith('+') else phone_number
+                                    wav_file['ip_operator'] = ip_operator
+                                    wav_file['call_time'] = f"{time[:2]}:{time[2:4]}:{time[4:6]}"
+
+                                    print(f"✅ Tahlil qilindi: {filename}")
+                                    print(f"    phone = {wav_file['phone_number']}, ip_operator = {wav_file['ip_operator']}, time = {wav_file['call_time']}")
+                                else:
+                                    print(f"❌ Tahlil qilinmadi: {filename}")
+
+                                wav_files.append(wav_file)
+                            else:
+                                print(f"⏭️ Fayl o‘tkazib yuborildi: {filename} (hajmi {file_size} bayt <= 44)")
+
+                        except OSError as e:
+                            print(f"DEBUG: Faylga kirishda xato: {filename}: {e}")  # Debug
+            else:
+                print(f"DEBUG: Direktoriya topilmadi: {local_dir}")  # Debug
+            context['wav_files'] = sorted(wav_files, key=lambda x: x.get('call_time', ''), reverse=True)
+        except Exception as e:
+            print(f"DEBUG: Fayl tizimi xatosi: {e}")  # Debug
+
+        # Tibbiy kartalarni sana bo‘yicha filtr qilish
+        try:
+            med_cards = MedCard.objects.filter(
+                Q(call__created_at__date=selected_date) |
+                Q(visits__visit_time__date=selected_date)
+            ).distinct().select_related('city', 'district')
+            print(f"DEBUG: {selected_date} sanasida {med_cards.count()} ta tibbiy karta topildi: {[f'{card.last_name} {card.first_name}' for card in med_cards]}")  # Debug
+            
+            # Fallback: Agar sana bo‘yicha karta topilmasa, barcha kartalarni ko‘rsatish
+            if not med_cards.exists():
+                print(f"DEBUG: {selected_date} uchun karta topilmadi, barcha kartalar olinmoqda")  # Debug
+                med_cards = MedCard.objects.all().select_related('city', 'district')
+                print(f"DEBUG: Jami {med_cards.count()} ta tibbiy karta topildi: {[f'{card.last_name} {card.first_name}' for card in med_cards]}")  # Debug
+
+            context['med_cards'] = med_cards
+        except Exception as e:
+            print(f"DEBUG: Tibbiy kartalarni olishda xato: {e}")  # Debug
+    print(wav_file)  # Debug
     return render(request, 'med_app/index.html', context)
 
 @custom_login_required
+def edit_med_cards_view(request):
+    form = SearchMedCardForm(request.GET or None)
+    med_cards = []
+    selected_date_str = request.GET.get('date')
+    today = timezone.localtime(timezone.now()).date()
+
+    if selected_date_str:
+        try:
+            selected_date = datetime.strptime(selected_date_str, '%Y-%m-%d').date()
+        except ValueError:
+            selected_date = today
+    else:
+        selected_date = today
+
+    if form.is_valid():
+        first_name = form.cleaned_data.get('first_name')
+        last_name = form.cleaned_data.get('last_name')
+        surname = form.cleaned_data.get('surname')
+        phone_number = form.cleaned_data.get('phone_number')
+        birth_date = form.cleaned_data.get('birth_date')
+
+        query = Q()
+        if first_name:
+            query &= Q(first_name__icontains=first_name)
+        if last_name:
+            query &= Q(last_name__icontains=last_name)
+        if surname:
+            query &= Q(surname__icontains=surname)
+        if phone_number:
+            query &= Q(phone_number__icontains=phone_number)
+        if birth_date:
+            query &= Q(birth_date=birth_date)
+        query &= (
+            Q(created_at__date=selected_date) |
+            Q(calls__created_at__date=selected_date) |
+            Q(visits__visit_time__date=selected_date)
+        )
+
+        med_cards = MedCard.objects.filter(query).distinct().select_related('city', 'district')
+
+    context = {
+        'title': 'Редактировать мед. карты',
+        'form': form,
+        'med_cards': med_cards,
+        'selected_date': selected_date,
+        'today': today,
+        'yesterday': selected_date - timedelta(days=1),
+        'day_before_yesterday': selected_date - timedelta(days=2),
+    }
+    return render(request, 'med_app/edit_med_cards.html', context)
+@custom_login_required
+def edit_med_card_view(request, id):
+    med_card = get_object_or_404(MedCard, id=id)
+    if request.method == 'POST':
+        form = MedCardForm(request.POST, instance=med_card)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Медицинская карта успешно обновлена.')
+            return redirect('edit_med_cards_url')
+        else:
+            messages.error(request, 'Пожалуйста, исправьте ошибки в форме.')
+    else:
+        form = MedCardForm(instance=med_card)
+    context = {
+        'title': f'Редактировать мед. карту: {med_card.last_name} {med_card.first_name}',
+        'form': form,
+        'med_card': med_card,
+    }
+    return render(request, 'med_app/edit_med_card.html', context)
+
+
+from django.http import FileResponse, Http404
+import os
+
 def stream_wav_file(request, wav_path):
-    base_dir = "/mnt/cdr"
-    wav_path = wav_path.strip('/')
-    if wav_path.startswith('mnt/cdr/'):
-        wav_path = wav_path[8:]
-    wav_path = os.path.normpath(wav_path).replace('\\', '/')
-    full_path = os.path.join(base_dir, wav_path).replace('\\', '/')
-    normalized_full_path = os.path.normpath(full_path)
-    normalized_base_dir = os.path.normpath(base_dir)
-    if not normalized_full_path.startswith(normalized_base_dir):
-        return HttpResponseForbidden("Faylga ruxsat yo‘q")
-    try:
-        if not os.path.exists(full_path):
-            return HttpResponseServerError("Fayl topilmadi")
-        if not os.access(full_path, os.R_OK):
-            return HttpResponseForbidden("Faylni o‘qish uchun ruxsat yo‘q")
-        response = FileResponse(open(full_path, 'rb'), content_type='audio/wav')
-        response['Content-Disposition'] = f'inline; filename="{os.path.basename(full_path)}"'
-        return response
-    except Exception as e:
-        return HttpResponseServerError(f"Faylni yuklashda xato: {str(e)}")
+    base_dir = os.path.join(os.getcwd(), 'media/cdr')
+    wav_path = os.path.normpath(wav_path.lstrip('/')).replace('\\', '/')
+    full_path = os.path.join(base_dir, wav_path)
+
+    if not os.path.exists(full_path):
+        raise Http404("Fayl topilmadi")
+
+    return FileResponse(open(full_path, 'rb'), content_type='audio/wav')
 
 @custom_login_required
 def create_med_cart_get_view(request):
@@ -270,7 +382,7 @@ def create_med_cart_post_view(request):
                     final_district = selected_district
                 else:
                     messages.error(request, "Ошибка: Выбранный район не соответствует городу.")
-                    return render(request, 'med_app/create_med_card_template.html',
+                    return render(request, 'med_app/create_med_cart.html',
                                   {'form': form, 'title': 'Создать мед. карту'})
 
         if final_city and final_district:
@@ -284,6 +396,10 @@ def create_med_cart_post_view(request):
             messages.error(request, "Не удалось определить город или район для сохранения медкарты.")
     else:
         messages.error(request, "Пожалуйста, исправьте ошибки в форме.")
+    return render(request, 'med_app/create_med_cart.html', {
+        'form': form,
+        'title': 'Создать мед. карту'
+    })
 
 @custom_login_required
 def med_card_profile_view(request, id):

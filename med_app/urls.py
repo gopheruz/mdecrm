@@ -23,7 +23,9 @@ urlpatterns = [
     path('reports/visits/', visits_report_view, name='visits_report_url'),
     path('stream-wav/<path:wav_path>/', stream_wav_file, name='stream_wav_file'),
     path('download-wav/<path:wav_path>/', download_wav_file, name='download_wav_file'),
+    path('edit_med_cards_url/',all_med_cards_view,name='edit_med_cards_url'),
     path('analytics/', analytics_view, name='analytics_url'),
-    # Favicon uchun qayta yo‘naltirish
     path('favicon.ico', RedirectView.as_view(url='/static/favicon.ico')),
+    path('edit-med-cards/', edit_med_cards_view, name='edit_med_cards_url'),
+    path('edit-med-card/<int:id>/',edit_med_card_view, name='edit_med_card_url'),
 ]
