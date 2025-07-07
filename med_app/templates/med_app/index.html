@@ -6,7 +6,7 @@
 {% endblock title %}
 
 {% block main %}
-<div class="container mt-4 mb-4">
+<div class="mt-4 mb-4"> <!-- Removed container class -->
     <div class="row g-4 mb-4">
         {# Дата и время карточка #}
         <div class="col-md-5 col-lg-4">
@@ -57,7 +57,7 @@
                                 {# Кнопки для относительных дат #}
                                 <div class="btn-group" role="group" aria-label="Относительные даты">
                                     <a href="?date={{ day_before_yesterday|date:'Y-m-d' }}"
-                                        class=" nltk: btn btn-outline-secondary">Позавчера</a>
+                                        class="btn btn-outline-secondary">Позавчера</a>
                                     <a href="?date={{ yesterday|date:'Y-m-d' }}"
                                         class="btn btn-outline-secondary">Вчера</a>
                                     <a href="?date={{ today|date:'Y-m-d' }}"
@@ -79,12 +79,12 @@
 
     {# История звонков и медицинские карты #}
     {% if user.is_authenticated %}
-    <div class="row g-4">
+    <div class="row g-0"> <!-- Removed container, set g-0 to remove gutters -->
         {# История звонков #}
-        <div class="col-lg-6">
+        <div class="col-lg-6 px-0"> <!-- Removed margins with px-0 -->
             <h3 class="text-center mb-3">Все звонки за {{ selected_date|date:"d F Y" }}</h3>
             {% if wav_files %}
-            <div class="card shadow-sm mb-4">
+            <div class="card shadow-sm mb-4 mx-0"> <!-- Removed margins with mx-0 -->
                 <div class="card-header bg-light">
                     <h5 class="mb-0 text-primary">
                         <i class="bi bi-telephone-fill me-2"></i>
@@ -133,17 +133,17 @@
                 </div>
             </div>
             {% else %}
-            <div class="alert alert-warning text-center" role="alert">
+            <div class="alert alert-warning text-center mx-0" role="alert"> <!-- Removed margins -->
                 <i class="bi bi-exclamation-triangle me-2"></i>Аудиозаписи за выбранную дату {{ selected_date|date:"d.m.Y" }} не найдены.
             </div>
             {% endif %}
         </div>
 
         {# Медицинские карты #}
-        <div class="col-lg-6">
+        <div class="col-lg-6 px-0"> <!-- Removed margins with px-0 -->
             <h3 class="text-center mb-3">Мед. карты за {{ selected_date|date:"d F Y" }}</h3>
             {% if med_cards %}
-            <div class="card shadow-sm mb-4">
+            <div class="card shadow-sm mb-4 mx-0"> <!-- Removed margins with mx-0 -->
                 <div class="card-header bg-light">
                     <h5 class="mb-0 text-primary">
                         <i class="bi bi-person-lines-fill me-2"></i>
@@ -187,7 +187,7 @@
                 </div>
             </div>
             {% else %}
-            <div class="alert alert-warning text-center" role="alert">
+            <div class="alert alert-warning text-center mx-0" role="alert"> <!-- Removed margins -->
                 <i class="bi bi-exclamation-triangle me-2"></i>Медицинские карты за выбранную дату {{ selected_date|date:"d.m.Y" }} не найдены.
             </div>
             {% endif %}

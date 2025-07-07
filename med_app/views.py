@@ -173,7 +173,7 @@ def index_view(request):
 
     if request.user.is_authenticated:
         # .wav fayllarni to‘g‘ridan-to‘g‘ri direktoriyadan olish
-        base_dir = os.path.join(os.getcwd(), 'media/cdr')  # /Users/apple/Desktop/Call_centre/mdecrm/cdr
+        base_dir = '/mnt/cdr'
         local_dir = os.path.join(base_dir, f"{selected_date.year}", f"{selected_date.month:02d}", f"{selected_date.day:02d}")
         wav_files = []
         try:
@@ -235,9 +235,8 @@ def index_view(request):
             med_cards = MedCard.objects.filter(
                 Q(call__created_at__date=selected_date) |
                 Q(visits__visit_time__date=selected_date)
-            ).distinct().select_related('city', 'district')
+            ).distinct().select_related('city', 'district').order_by('last_name')
             print(f"DEBUG: {selected_date} sanasida {med_cards.count()} ta tibbiy karta topildi: {[f'{card.last_name} {card.first_name}' for card in med_cards]}")  # Debug
-            
             # Fallback: Agar sana bo‘yicha karta topilmasa, barcha kartalarni ko‘rsatish
             if not med_cards.exists():
                 print(f"DEBUG: {selected_date} uchun karta topilmadi, barcha kartalar olinmoqda")  # Debug
@@ -247,7 +246,7 @@ def index_view(request):
             context['med_cards'] = med_cards
         except Exception as e:
             print(f"DEBUG: Tibbiy kartalarni olishda xato: {e}")  # Debug
-    print(wav_file)  # Debug
+    # Debug
     return render(request, 'med_app/index.html', context)
 
 @custom_login_required
