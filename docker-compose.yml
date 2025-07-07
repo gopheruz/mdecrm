@@ -1,0 +1,8 @@
+services:
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - /mnt/cdr:/mnt/cdr:z
+      - /mnt/log:/mnt/log:z
