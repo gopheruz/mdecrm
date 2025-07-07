@@ -88,7 +88,6 @@
                 <table class="table table-bordered table-striped table-hover align-middle mb-0">
                     <thead class="table-light">
                         <tr>
-
                             <th scope="col">IP Оператор</th>
                             <th scope="col">Телефон</th>
                             <th scope="col">Время звонка</th>
@@ -96,7 +95,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for wav_file in wav_files %}
+                        {% for wav_file in wav_files|dictsortreversed:"call_time" %}
                         <tr>
                             <td>{{ wav_file.phone_number|default:"-" }}</td>
                             <td>{{ wav_file.ip_operator|default:"-" }}</td>
@@ -121,7 +120,7 @@
         </div>
     </div>
     {% else %}
-    <div class="alert alert-warning text-center" role="alert">
+    <div class="alert alert-warning text-center" role="alert"></div>
         <i class="bi bi-exclamation-triangle me-2"></i>Аудиозаписи за выбранную дату {{ selected_date|date:"d.m.Y" }} не
         найдены.
     </div>
