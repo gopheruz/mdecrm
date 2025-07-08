@@ -153,14 +153,29 @@
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
-                        <table class="table table-bordered table-striped table-hover align-middle mb-0">
+                        <table id="med-cards-table" class="table table-bordered table-striped table-hover align-middle mb-0">
                             <thead class="table-light">
                                 <tr>
-                                    <th scope="col">№</th>
-                                    <th scope="col">ФИО</th>
-                                    <th scope="col">Дата рождения</th>
-                                    <th scope="col">Город</th>
-                                    <th scope="col">Район</th>
+                                    <th scope="col" style="width: 60px; min-width: 40px; max-width: 60px; text-align: center;">
+                                        №
+                                        <input type="text" id="filter-number" class="form-control form-control-sm mt-1 filter-input" placeholder="" style="width: 100%; min-width: 30px; max-width: 60px; text-align: center;">
+                                    </th>
+                                    <th scope="col">
+                                        ФИО
+                                        <input type="text" id="filter-fio" class="form-control form-control-sm mt-1 filter-input" placeholder="">
+                                    </th>
+                                    <th scope="col">
+                                        Дата рождения
+                                        <input type="text" id="filter-birth-date" class="form-control form-control-sm mt-1 filter-input" placeholder="">
+                                    </th>
+                                    <th scope="col">
+                                        Город
+                                        <input type="text" id="filter-city" class="form-control form-control-sm mt-1 filter-input" placeholder="">
+                                    </th>
+                                    <th scope="col">
+                                        Район
+                                        <input type="text" id="filter-district" class="form-control form-control-sm mt-1 filter-input" placeholder="">
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -170,8 +185,7 @@
                                     <td>
                                         <a href="{% url 'med_card_profile_url' med_card.id %}">
                                             {{ med_card.last_name }} {{ med_card.first_name }} {{ med_card.surname }}
-                                        </a>
-                                    </td>
+                                        </td>
                                     <td>{{ med_card.birth_date|date:"d.m.Y" }}</td>
                                     <td>{{ med_card.city.name|default:"-" }}</td>
                                     <td>{{ med_card.district.name|default:"-" }}</td>
@@ -186,20 +200,19 @@
                     </div>
                 </div>
             </div>
-            {% else %}
+        {% else %}
             <div class="alert alert-warning text-center mx-0" role="alert"> <!-- Removed margins -->
                 <i class="bi bi-exclamation-triangle me-2"></i>Медицинские карты за выбранную дату {{ selected_date|date:"d.m.Y" }} не найдены.
             </div>
-            {% endif %}
+        {% endif %}
         </div>
-    </div>
     {% else %}
     <div class="alert alert-danger text-center" role="alert">
-        <i class="bi bi-exclamation-circle me-2"></i>Пожалуйста, войдите в систему.
+        <i class="bi bi-exclamation-circle me-2"></i> Пожалуйста, войдите в систему.
     </div>
     {% endif %}
 
-    <!-- Auto-refresh for dynamic updates -->
+    <!-- Auto-refresh for dynamic updates and table filtering -->
     <script>
         function updateDateTime() {
             const now = new Date();
@@ -232,10 +245,51 @@
             });
         }
 
-        // Initialize date/time update and audio player setup
+        // Function to filter medical cards table
+        function filterTable() {
+            const filters = {
+                number: document.getElementById('filter-number').value.toLowerCase(),
+                fio: document.getElementById('filter-fio').value.toLowerCase(),
+                birthDate: document.getElementById('filter-birth-date').value.toLowerCase(),
+                city: document.getElementById('filter-city').value.toLowerCase(),
+                district: document.getElementById('filter-district').value.toLowerCase()
+            };
+
+            const table = document.getElementById('med-cards-table');
+            const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+
+            for (let i = 0; i < rows.length; i++) {
+                const cells = rows[i].getElementsByTagName('td');
+                if (cells.length < 5) continue; // Skip empty rows
+
+                const number = cells[0].textContent.toLowerCase();
+                const fio = cells[1].textContent.toLowerCase();
+                const birthDate = cells[2].textContent.toLowerCase();
+                const city = cells[3].textContent.toLowerCase();
+                const district = cells[4].textContent.toLowerCase();
+
+                const showRow = (
+                    number.includes(filters.number) &&
+                    fio.includes(filters.fio) &&
+                    birthDate.includes(filters.birthDate) &&
+                    city.includes(filters.city) &&
+                    district.includes(filters.district)
+                );
+
+                rows[i].style.display = showRow ? '' : 'none';
+            }
+        }
+
+        // Initialize date/time update, audio player setup, and table filters
         setInterval(updateDateTime, 1000);
         updateDateTime();
         setupAudioPlayers();
+
+        // Add event listeners to filter inputs
+        const filterInputs = document.querySelectorAll('.filter-input');
+        filterInputs.forEach(input => {
+            input.addEventListener('input', filterTable);
+        });
     </script>
 </div>
 {% endblock main %}
