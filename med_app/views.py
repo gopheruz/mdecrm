@@ -325,7 +325,7 @@ from django.http import FileResponse, Http404
 import os
 
 def stream_wav_file(request, wav_path):
-    base_dir = os.path.join(os.getcwd(), 'media/cdr')
+    base_dir = os.path.join(os.getcwd(), '/mnt/cdr')
     wav_path = os.path.normpath(wav_path.lstrip('/')).replace('\\', '/')
     full_path = os.path.join(base_dir, wav_path)
 
@@ -908,7 +908,7 @@ def analytics_view(request):
 def download_wav_file(request, wav_path):
     base_dir = "/mnt/cdr"
     wav_path = wav_path.strip('/')
-    if wav_path.startswith('mnt/cdr/'):
+    if wav_path.startswith('/mnt/cdr/'):
         wav_path = wav_path[8:]
     wav_path = os.path.normpath(wav_path).replace('\\', '/')
     full_path = os.path.join(base_dir, wav_path).replace('\\', '/')
