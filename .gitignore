@@ -11,7 +11,7 @@ __pycache__/
 *.pyd
 *.sqlite3
 db.sqlite3
-
+mnt
 # Env files
 .env
 *.env
