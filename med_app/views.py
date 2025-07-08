@@ -323,7 +323,7 @@ def edit_med_card_view(request, id):
 
 from django.http import FileResponse, Http404
 import os
-
+@custom_login_required
 def stream_wav_file(request, wav_path):
     base_dir = os.path.join(os.getcwd(), '/mnt/cdr')
     wav_path = os.path.normpath(wav_path.lstrip('/')).replace('\\', '/')
