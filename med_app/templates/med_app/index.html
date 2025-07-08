@@ -112,10 +112,10 @@
                                     <td>
                                         <div class="d-flex flex-column flex-sm-row gap-2 align-items-start">
                                             <audio controls class="mb-2 mb-sm-0">
-                                                <source src="{% url 'stream_wav_file' wav_file.path|slice:'50:' %}" type="audio/wav">
+                                                <source src="{% url 'stream_wav_file' wav_file.path|slice:'9:' %}" type="audio/wav">
                                                 Ваш браузер не поддерживает аудио файлы.
                                             </audio>
-                                            <a href="{% url 'download_wav_file' wav_file.path|slice:'50:' %}"
+                                            <a href="{% url 'download_wav_file' wav_file.path|slice:'9:' %}"
                                                 class="btn btn-success btn-sm px-3" download="{{ wav_file.filename }}">
                                                 <i class="bi bi-download me-1"></i>Скачать
                                             </a>
