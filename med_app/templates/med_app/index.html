@@ -165,7 +165,7 @@
                                         <input type="text" id="filter-fio" class="form-control form-control-sm mt-1 filter-input" placeholder="">
                                     </th>
                                     <th scope="col">
-                                        Дата рождения
+                                        Pождения
                                         <input type="text" id="filter-birth-date" class="form-control form-control-sm mt-1 filter-input" placeholder="">
                                     </th>
                                     <th scope="col">
@@ -182,13 +182,13 @@
                                 {% for med_card in med_cards %}
                                 <tr>
                                     <td>{{ forloop.counter }}</td>
-                                    <td>
+                                    <td >
                                         <a href="{% url 'med_card_profile_url' med_card.id %}">
                                             {{ med_card.last_name }} {{ med_card.first_name }} {{ med_card.surname }}
                                         </td>
-                                    <td>{{ med_card.birth_date|date:"d.m.Y" }}</td>
-                                    <td>{{ med_card.city.name|default:"-" }}</td>
-                                    <td>{{ med_card.district.name|default:"-" }}</td>
+                                    <td style="width: 100px;">{{ med_card.birth_date|date:"d.m.Y" }}</td>
+                                    <td style="width: 150px;">{{ med_card.city.name|default:"-" }}</td>
+                                    <td style="width: 150px;">{{ med_card.district.name|default:"-" }}</td>
                                 </tr>
                                 {% empty %}
                                 <tr>
