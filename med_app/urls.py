@@ -26,6 +26,5 @@ urlpatterns = [
     path('edit_med_cards_url/',all_med_cards_view,name='edit_med_cards_url'),
     path('analytics/', analytics_view, name='analytics_url'),
     path('favicon.ico', RedirectView.as_view(url='/static/favicon.ico')),
-    path('edit-med-cards/', edit_med_cards_view, name='edit_med_cards_url'),
-    path('edit-med-card/<int:id>/',edit_med_card_view, name='edit_med_card_url'),
+    path('medcard/edit/<int:pk>/', edit_med_card, name='edit_med_card'),
 ]

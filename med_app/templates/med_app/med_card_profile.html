@@ -109,38 +109,44 @@
         </div>
         <div class="card-body">
             <div class="table-responsive">
-                <table class="table table-bordered table-striped table-hover align-middle">
-                    <thead class="table-light">
+                <table class="table table-striped">
+                    <thead>
                         <tr>
-                            <th scope="col">#ID</th>
-                            <th scope="col">Телефон</th>
-                            <th scope="col">Комментарий</th>
-                            <th scope="col">Дата/Время</th>
-                            <th scope="col">Оператор</th>
-                            <th scope="col">Действие</th>
+                            <th scope="col">ID</th>
+                            <!-- <th scope="col">Телефон</th> -->
+                            <th scope="col">Время звонка</th>
+                            <th scope="col">IP Оператор</th>
+                            <th scope="col">Аудио / Скачать</th>
                         </tr>
                     </thead>
                     <tbody>
-                    {% for call in calls %}
+                        {% for call in calls %}
                         <tr>
-                            <th scope="row">{{ call.id }}</th>
-                            <td>{{ call.phone_number|default:"-" }}</td>
-                            <td>{{ call.comment|default:""|truncatewords:15 }}</td> {# Увеличил truncatewords #}
-                            <td>{{ call.created_at|date:"d.m.Y H:i" }}</td>
-                            <td>{{ call.operator.get_full_name|default:call.operator.username|default:"Не указан" }}</td>
+                            <th scope="row">{{forloop.counter}}</th>
+                            <!-- <td>{{ call.phone_number|default:"-" }}</td> -->
+                            <td>{{ call.created_at|date:"d.m.Y H:i"|default:"-" }}</td>
+                            <td>{{ call.operator|default:"Не указан" }}</td>
                             <td>
-                                <a href="{% url 'call_detail_url' call.id %}" class="btn btn-sm btn-outline-primary">
-                                    <i class="bi bi-telephone-forward-fill me-1"></i>Детали
-                                </a>
+                                <div class="d-flex flex-column flex-sm-row gap-2 align-items-start">
+                                    <audio controls class="mb-2 mb-sm-0">
+                                        <source src="{% url 'stream_wav_file' call.wav_path %}" type="audio/wav">
+                                        Ваш браузер не поддерживает аудио файлы.
+                                    </audio>
+                                    <a href="{% url 'download_wav_file' call.wav_path %}"
+                                        class="btn btn-success btn-sm px-3" download="{{ wav_file.filename }}">
+                                        <i class="bi bi-download me-1"></i>Скачать
+                                    </a>
+                                </div>
+                               
                             </td>
                         </tr>
-                    {% empty %}
+                        {% empty %}
                         <tr>
-                            <td colspan="6" class="text-center fst-italic text-muted py-3"> {# Обновлен colspan #}
+                             <td colspan="6" class="text-center fst-italic text-muted py-3"> {# Обновлен colspan #}
                                 <i class="bi bi-exclamation-circle me-2"></i>Звонков не найдено.
                             </td>
                         </tr>
-                    {% endfor %}
+                        {% endfor %}
                     </tbody>
                 </table>
             </div>

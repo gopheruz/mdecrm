@@ -4,7 +4,6 @@ import os
 import re
 from datetime import datetime, timedelta
 from io import BytesIO
-
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Prefetch, Q, Count, F, Case, When, IntegerField
@@ -23,10 +22,15 @@ from openpyxl.workbook import Workbook
 
 from med_app.forms import *
 from med_app.models import *
+from django.db.models import Q
+import fnmatch
+from django.contrib.auth.views import redirect_to_login
 
-from med_app.models import MedCard
-from django.utils import timezone
-from datetime import datetime
+from django.shortcuts import render, get_object_or_404, redirect
+from django.urls import reverse
+from .models import MedCard, City, District
+from .forms import MedCardForm
+from django.contrib import messages
 
 @login_required
 def serve_recording_view(request, call_id):
@@ -118,10 +122,6 @@ def get_call_questions_ajax(request):
         return JsonResponse({'error': str(e)}, status=500)
 
 
-from django.conf import settings
-from django.contrib.auth.decorators import login_required
-from django.contrib.auth.views import redirect_to_login
-
 def custom_login_required(view_func):
     def _wrapped_view(request, *args, **kwargs):
         if not request.user.is_authenticated:
@@ -135,14 +135,6 @@ def get_questions(request):
     questions = Question.objects.filter(department_id=department_id).values('id', 'question')
     return JsonResponse(list(questions), safe=False)
 
-from django.shortcuts import render
-from django.utils import timezone
-from django.db.models import Q
-from datetime import datetime, timedelta
-import os
-import re
-import fnmatch
-from med_app.models import MedCard, Call, Visit
 
 def index_view(request):
     context = {
@@ -159,12 +151,9 @@ def index_view(request):
     if selected_date_str:
         try:
             selected_date = datetime.strptime(selected_date_str, '%Y-%m-%d').date()
-            print(f"DEBUG: GET dan tanlangan sana: {selected_date}")  # Debug
         except ValueError:
-            print(f"DEBUG: Noto‘g‘ri sana formati: {selected_date_str}, standart sifatida bugungi sana")  # Debug
             selected_date = today
     else:
-        print("DEBUG: GET da sana berilmagan, standart sifatida bugungi sana")  # Debug
         selected_date = today
 
     context['selected_date'] = selected_date
@@ -172,19 +161,16 @@ def index_view(request):
     context['day_before_yesterday'] = selected_date - timedelta(days=2)
 
     if request.user.is_authenticated:
-        # .wav fayllarni to‘g‘ridan-to‘g‘ri direktoriyadan olish
-        base_dir = '/mnt/cdr'
+        base_dir = '/Users/apple/Desktop/Call_centre/mdecrm/mnt/cdr'
         local_dir = os.path.join(base_dir, f"{selected_date.year}", f"{selected_date.month:02d}", f"{selected_date.day:02d}")
         wav_files = []
         try:
             if os.path.exists(local_dir):
-                print(f"DEBUG: Topilgan direktoriya: {local_dir}, fayllar: {os.listdir(local_dir)}")  # Debug
                 for filename in os.listdir(local_dir):
                     if filename.endswith('.wav'):
                         file_path = os.path.join(local_dir, filename).replace('\\', '/')
                         try:
                             file_size = os.path.getsize(file_path)
-                            print(f"DEBUG: hajmi: {file_size} bayt")  # Debug
                             if file_size > 44:  # Fayl hajmi > 44 bayt
                                 wav_file = {
                                     'path': file_path,
@@ -213,8 +199,6 @@ def index_view(request):
                                     wav_file['ip_operator'] = ip_operator
                                     wav_file['call_time'] = f"{time[:2]}:{time[2:4]}:{time[4:6]}"
 
-                                    print(f"✅ Tahlil qilindi: {filename}")
-                                    print(f"    phone = {wav_file['phone_number']}, ip_operator = {wav_file['ip_operator']}, time = {wav_file['call_time']}")
                                 else:
                                     print(f"❌ Tahlil qilinmadi: {filename}")
 
@@ -227,117 +211,52 @@ def index_view(request):
             else:
                 print(f"DEBUG: Direktoriya topilmadi: {local_dir}")  # Debug
             context['wav_files'] = sorted(wav_files, key=lambda x: x.get('call_time', ''), reverse=True)
-        except Exception as e:
-            print(f"DEBUG: Fayl tizimi xatosi: {e}")  # Debug
 
-        # Tibbiy kartalarni sana bo‘yicha filtr qilish
+        except Exception as e:
+            print(f"DEBUG: Fayl tizimi xatosi: {e}")
+
         try:
             med_cards = MedCard.objects.filter(
                 Q(call__created_at__date=selected_date) |
                 Q(visits__visit_time__date=selected_date)
             ).distinct().select_related('city', 'district').order_by('last_name')
-            print(f"DEBUG: {selected_date} sanasida {med_cards.count()} ta tibbiy karta topildi: {[f'{card.last_name} {card.first_name}' for card in med_cards]}")  # Debug
-            # Fallback: Agar sana bo‘yicha karta topilmasa, barcha kartalarni ko‘rsatish
             if not med_cards.exists():
-                print(f"DEBUG: {selected_date} uchun karta topilmadi, barcha kartalar olinmoqda")  # Debug
                 med_cards = MedCard.objects.all().select_related('city', 'district')
-                print(f"DEBUG: Jami {med_cards.count()} ta tibbiy karta topildi: {[f'{card.last_name} {card.first_name}' for card in med_cards]}")  # Debug
 
             context['med_cards'] = med_cards
         except Exception as e:
             print(f"DEBUG: Tibbiy kartalarni olishda xato: {e}")  # Debug
-    # Debug
+
     return render(request, 'med_app/index.html', context)
 
 @custom_login_required
-def edit_med_cards_view(request):
-    form = SearchMedCardForm(request.GET or None)
-    med_cards = []
-    selected_date_str = request.GET.get('date')
-    today = timezone.localtime(timezone.now()).date()
-
-    if selected_date_str:
-        try:
-            selected_date = datetime.strptime(selected_date_str, '%Y-%m-%d').date()
-        except ValueError:
-            selected_date = today
-    else:
-        selected_date = today
-
-    if form.is_valid():
-        first_name = form.cleaned_data.get('first_name')
-        last_name = form.cleaned_data.get('last_name')
-        surname = form.cleaned_data.get('surname')
-        phone_number = form.cleaned_data.get('phone_number')
-        birth_date = form.cleaned_data.get('birth_date')
-
-        query = Q()
-        if first_name:
-            query &= Q(first_name__icontains=first_name)
-        if last_name:
-            query &= Q(last_name__icontains=last_name)
-        if surname:
-            query &= Q(surname__icontains=surname)
-        if phone_number:
-            query &= Q(phone_number__icontains=phone_number)
-        if birth_date:
-            query &= Q(birth_date=birth_date)
-        query &= (
-            Q(created_at__date=selected_date) |
-            Q(calls__created_at__date=selected_date) |
-            Q(visits__visit_time__date=selected_date)
-        )
-
-        med_cards = MedCard.objects.filter(query).distinct().select_related('city', 'district')
-
-    context = {
-        'title': 'Редактировать мед. карты',
-        'form': form,
-        'med_cards': med_cards,
-        'selected_date': selected_date,
-        'today': today,
-        'yesterday': selected_date - timedelta(days=1),
-        'day_before_yesterday': selected_date - timedelta(days=2),
-    }
-    return render(request, 'med_app/edit_med_cards.html', context)
-@custom_login_required
-def edit_med_card_view(request, id):
-    med_card = get_object_or_404(MedCard, id=id)
-    if request.method == 'POST':
-        form = MedCardForm(request.POST, instance=med_card)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'Медицинская карта успешно обновлена.')
-            return redirect('edit_med_cards_url')
-        else:
-            messages.error(request, 'Пожалуйста, исправьте ошибки в форме.')
-    else:
-        form = MedCardForm(instance=med_card)
-    context = {
-        'title': f'Редактировать мед. карту: {med_card.last_name} {med_card.first_name}',
-        'form': form,
-        'med_card': med_card,
-    }
-    return render(request, 'med_app/edit_med_card.html', context)
-
-
-from django.http import FileResponse, Http404
-import os
-@custom_login_required
 def stream_wav_file(request, wav_path):
-    base_dir = os.path.join(os.getcwd(), '/mnt/cdr')
+    base_dir = os.path.join(os.getcwd(), 'mnt/cdr')
     wav_path = os.path.normpath(wav_path.lstrip('/')).replace('\\', '/')
     full_path = os.path.join(base_dir, wav_path)
-    print(
-        f"DEBUG:fullpath {full_path}",
-        f"base dir {base_dir}",
-        f"waw path{wav_path}"  # Debug
-
-    )
     if not os.path.exists(full_path):
         raise Http404("Fayl topilmadi")
 
     return FileResponse(open(full_path, 'rb'), content_type='audio/wav')
+
+
+def edit_med_card(request, pk):
+    med_card = get_object_or_404(MedCard, pk=pk)
+    
+    if request.method == 'POST':
+        form = MedCardForm(request.POST, instance=med_card)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Медицинская карта успешно обновлена!')
+            return redirect('all_med_cards_url')  # O'zgartirishdan keyin qayerga yo'naltirish kerak bo'lsa
+    else:
+        form = MedCardForm(instance=med_card)
+    
+    context = {
+        'form': form,
+        'med_card': med_card,
+    }
+    return render(request, 'med_app/edit_med_card.html', context)
 
 @custom_login_required
 def create_med_cart_get_view(request):
@@ -408,7 +327,41 @@ def create_med_cart_post_view(request):
 @custom_login_required
 def med_card_profile_view(request, id):
     med_card = get_object_or_404(MedCard, id=id)
-    calls = Call.objects.filter(med_card=id)
+    base_dir = os.path.join(os.getcwd(), 'mnt/cdr/2025')
+    calls = []
+
+    for root, dirs, files in os.walk(base_dir):
+        for file in files:
+            if file.endswith('.wav'):
+                parts = file.split('-')
+                if len(parts) >= 2:
+                    phone_number = parts[1]  
+                    if phone_number == str(med_card.phone_number): 
+                        try:
+                            timestamp = parts[-2] 
+                            created_at = datetime.strptime(timestamp, '%Y%m%d-%H%M%S')
+                        except (IndexError, ValueError):
+                            created_at = None
+
+                        relative_path = os.path.relpath(os.path.join(root, file), os.path.join(os.getcwd(), 'mnt/cdr')).replace('\\', '/')
+                        if parts[0] == 'out':
+                            operator=parts[2]
+                        else:
+                            operator=parts[1]
+                        dt_str = f"{parts[3]} {parts[4]}"  
+                        created_at = datetime.strptime(dt_str, "%Y%m%d %H%M%S") 
+                        print(created_at)
+                        print("aaaaaaaaa",operator)
+                        call_data = {
+                            'id': file, 
+                            'phone_number': phone_number,
+                            'created_at': created_at,
+                            'operator': operator, 
+                            'wav_path': relative_path, 
+                        }
+                        calls.append(call_data)
+
+    calls = sorted(calls, key=lambda x: x['created_at'], reverse=True)
     visits = Visit.objects.filter(med_card=id)
     context = {
         'title': 'Мед. карта',

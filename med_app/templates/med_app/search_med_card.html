@@ -98,7 +98,15 @@
                     <tbody>
                     {% for med_card in results %}
                     <tr>
-                        <td>{{ med_card.id }}</td>
+                        <td>{{ med_card.id }}
+                            {% if user.is_staff %}
+                            <a href="{% url 'edit_med_card' med_card.id %}" 
+                            class="btn btn-outline-primary btn-sm px-2 py-1 rounded-circle shadow-sm" 
+                            title="Редактировать">
+                                <i class="bi bi-pencil-square"></i>
+                            </a>
+                            {%endif%}
+                        </td>
                         <td>{{ med_card.last_name|default:"-" }}</td>
                         <td>{{ med_card.first_name|default:"-" }}</td>
                         <td>{{ med_card.surname|default:"-" }}</td>

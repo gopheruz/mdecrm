@@ -16,6 +16,7 @@
                 <th>Дата рождения</th>
                 <th>Город</th>
                 <th>Район</th>
+                <th>Rедактировать</th>
             </tr>
         </thead>
         <tbody>
@@ -30,6 +31,13 @@
                     <td>{{ med_card.birth_date|date:"d.m.Y" }}</td>
                     <td>{{ med_card.city.name|default:"-" }}</td>
                     <td>{{ med_card.district.name|default:"-" }}</td>
+                    <td>
+                        <a href="{% url 'edit_med_card' med_card.id %}" 
+                        class="btn btn-outline-primary btn-sm px-2 py-1 rounded-circle shadow-sm" 
+                        title="Редактировать">
+                            <i class="bi bi-pencil-square"></i>
+                        </a>
+                    </td>
                 </tr>
             {% empty %}
                 <tr>
