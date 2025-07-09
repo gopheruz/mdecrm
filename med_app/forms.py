@@ -16,9 +16,9 @@ class MedCardForm(forms.ModelForm):
                 'type': 'date',
                 'class': 'form-control'
             },
-            format='%Y-%m-%d'  # MUHIM QISM
+            format='%Y-%m-%d'
         ),
-        input_formats=['%Y-%m-%d']  # MUHIM QISM
+        input_formats=['%Y-%m-%d'] 
     )
 
     class Meta:
