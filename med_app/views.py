@@ -240,7 +240,7 @@ def stream_wav_file(request, wav_path):
 
 def edit_med_card(request, pk):
     med_card = get_object_or_404(MedCard, pk=pk)
-    
+
     if request.method == 'POST':
         form = MedCardForm(request.POST, instance=med_card)
         if form.is_valid():
@@ -249,7 +249,6 @@ def edit_med_card(request, pk):
             return redirect('med_card_profile_url', id=pk)
     else:
         form = MedCardForm(instance=med_card)
-    
     context = {
         'form': form,
         'med_card': med_card,
@@ -263,6 +262,7 @@ def create_med_cart_get_view(request):
         'title': 'Создание мед. карты !',
         'form': form
     }
+    print(1234)
     return render(request, 'med_app/create_med_cart.html', context)
 
 @custom_login_required
@@ -527,6 +527,7 @@ def visit_edit(request, visit_id):
     else:
         form = VisitEditForm(instance=visit)
     return render(request, 'med_app/visit_edit.html', {'form': form, 'visit': visit})
+
 @custom_login_required
 def all_med_cards_view(request):
     med_cards = MedCard.objects.all()

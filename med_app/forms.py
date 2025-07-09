@@ -10,6 +10,17 @@ from django.forms import BaseModelFormSet
 from med_app.models import MedCard, City, District
 
 class MedCardForm(forms.ModelForm):
+    birth_date = forms.DateField(
+        widget=forms.DateInput(
+            attrs={
+                'type': 'date',
+                'class': 'form-control'
+            },
+            format='%Y-%m-%d'  # MUHIM QISM
+        ),
+        input_formats=['%Y-%m-%d']  # MUHIM QISM
+    )
+
     class Meta:
         model = MedCard
         fields = [
