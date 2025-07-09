@@ -9,9 +9,9 @@
 <div class="container mt-4 mb-4">
 
     {# --- Секция Медицинской карты --- #}
-    <div class="row justify-content-center mb-4"> {# Центрируем карточку #}
-        <div class="col-lg-10 col-xl-9"> {# Немного увеличим ширину #}
-            <div class="card shadow-sm border-light"> {# Убрал border-0, добавил border-light #}
+    <div class="row mb-4">
+        <div class="col-12"> {# Removed col-lg-10 col-xl-9 to match full width #}
+            <div class="card shadow-sm border-light">
                 <div class="card-header bg-primary text-white">
                     <h5 class="mb-0">
                         <i class="bi bi-file-earmark-person-fill me-2"></i>Медицинская карта
@@ -24,9 +24,9 @@
                             <img src="{% static 'med_app/images/123.webp' %}"
                                  alt="Фото пациента {{ med_card.last_name }}"
                                  class="img-thumbnail rounded-circle"
-                                 width="140" height="140" {# Сделал квадратным для единообразия #}
+                                 width="140" height="140"
                                  style="object-fit: cover; border-width: 3px;"
-                                 onerror="this.onerror=null; this.src='https://placehold.co/140x140/E0E0E0/B0B0B0?text=Фото';"> {# Резервное изображение #}
+                                 onerror="this.onerror=null; this.src='https://placehold.co/140x140/E0E0E0/B0B0B0?text=Фото';">
                         </div>
 
                         {# Данные в 2 колонки #}
@@ -96,12 +96,48 @@
                             </div>
                         </div>
                     </div>
-                    {# Убрали кнопку "Добавить звонок" отсюда, перенесли вниз #}
                 </div>
             </div>
         </div>
     </div>
-
+{# --- Секция Истории посещений --- #}
+    <div class="card shadow-sm mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-calendar-check-fill me-2"></i>История посещений</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered table-striped table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th scope="col">#ID</th>
+                            <th scope="col">Дата/Время</th>
+                            <th scope="col">Причина</th>
+                            <th scope="col">Заметки</th>
+                            <th scope="col">Зарегистрировал</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for visit in visits %}
+                        <tr>
+                            <th scope="row">{{ visit.id }}</th>
+                            <td>{{ visit.visit_time|date:"d.m.Y H:i" }}</td>
+                            <td>{{ visit.reason|default:"-" }}</td>
+                            <td>{{ visit.notes|default:"-" }}</td>
+                            <td>{{ visit.operator.get_full_name|default:visit.operator.username|default:"Не указан" }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center fst-italic text-muted py-3">
+                                 <i class="bi bi-exclamation-circle me-2"></i>Посещений не найдено.
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
     {# --- Секция Истории звонков --- #}
     <div class="card shadow-sm mb-4">
         <div class="card-header">
@@ -113,7 +149,6 @@
                     <thead>
                         <tr>
                             <th scope="col">ID</th>
-                            <!-- <th scope="col">Телефон</th> -->
                             <th scope="col">Время звонка</th>
                             <th scope="col">IP Оператор</th>
                             <th scope="col">Аудио / Скачать</th>
@@ -122,8 +157,7 @@
                     <tbody>
                         {% for call in calls %}
                         <tr>
-                            <th scope="row">{{forloop.counter}}</th>
-                            <!-- <td>{{ call.phone_number|default:"-" }}</td> -->
+                            <th scope="row">{{ forloop.counter }}</th>
                             <td>{{ call.created_at|date:"d.m.Y H:i"|default:"-" }}</td>
                             <td>{{ call.operator|default:"Не указан" }}</td>
                             <td>
@@ -141,7 +175,7 @@
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="6" class="text-center fst-italic text-muted py-3"> {# Обновлен colspan #}
+                            <td colspan="4" class="text-center fst-italic text-muted py-3">
                                 <i class="bi bi-exclamation-circle me-2"></i>Звонков не найдено.
                             </td>
                         </tr>
@@ -152,48 +186,7 @@
         </div>
     </div>
 
-    {# --- Секция Истории посещений --- #}
-    <div class="card shadow-sm mb-4">
-        <div class="card-header">
-            <h5 class="mb-0"><i class="bi bi-calendar-check-fill me-2"></i>История посещений</h5>
-        </div>
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-bordered table-striped table-hover align-middle">
-                    <thead class="table-light">
-                        <tr>
-                            <th scope="col">#ID</th>
-                            <th scope="col">Дата/Время</th>
-                            <th scope="col">Причина</th>
-                            <th scope="col">Заметки</th>
-                            <th scope="col">Зарегистрировал</th>
-                            {# Можно добавить колонку Действие, если нужно #}
-                            {# <th scope="col">Действие</th> #}
-                        </tr>
-                    </thead>
-                    <tbody>
-                    {% for visit in visits %}
-                        <tr>
-                            <th scope="row">{{ visit.id }}</th>
-                            <td>{{ visit.visit_time|date:"d.m.Y H:i" }}</td>
-                            <td>{{ visit.reason|default:"-" }}</td>
-                            <td>{{ visit.notes|default:"-" }}</td>
-                            <td>{{ visit.operator.get_full_name|default:visit.operator.username|default:"Не указан" }}</td>
-                            {# Пример колонки с действием #}
-                            {# <td><a href="#" class="btn btn-sm btn-outline-info"><i class="bi bi-info-circle-fill me-1"></i>Детали</a></td> #}
-                        </tr>
-                    {% empty %}
-                        <tr>
-                            <td colspan="5" class="text-center fst-italic text-muted py-3"> {# Обновлен colspan #}
-                                 <i class="bi bi-exclamation-circle me-2"></i>Посещений не найдено.
-                            </td>
-                        </tr>
-                    {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
+    
 
     {# --- Секция Кнопок Действий --- #}
     <div class="d-flex justify-content-center justify-content-md-end gap-3 mb-4">
