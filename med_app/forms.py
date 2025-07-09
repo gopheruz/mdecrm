@@ -285,6 +285,14 @@ class QuestionsReportForm(forms.Form):
 
         return cleaned_data
 
+class VisitEditForm(forms.ModelForm):
+    class Meta:
+        model = Visit
+        fields = ('reason', 'notes',)
+        widgets = {
+            'reason': forms.Textarea(attrs={'class': 'form-control'}),
+            'notes': forms.Textarea(attrs={'class': 'form-control'}),
+        }
 
 class VisitsReportForm(forms.Form):
     start_date = forms.DateField(

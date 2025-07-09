@@ -29,8 +29,7 @@ from django.contrib.auth.views import redirect_to_login
 from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse
 from .models import MedCard, City, District
-from .forms import MedCardForm
-from django.contrib import messages
+from .forms import MedCardForm,VisitEditForm
 
 @login_required
 def serve_recording_view(request, call_id):
@@ -247,7 +246,7 @@ def edit_med_card(request, pk):
         if form.is_valid():
             form.save()
             messages.success(request, 'Медицинская карта успешно обновлена!')
-            return redirect('all_med_cards_url')  # O'zgartirishdan keyin qayerga yo'naltirish kerak bo'lsa
+            return redirect('med_card_profile_url', id=pk)
     else:
         form = MedCardForm(instance=med_card)
     
@@ -518,6 +517,16 @@ def create_visit_post_view(request, med_card_id):
         messages.info(request, "Визит успешно создан !")
         return redirect('med_card_profile_url', med_card_id)
 
+def visit_edit(request, visit_id):
+    visit = get_object_or_404(Visit, id=visit_id)
+    if request.method == 'POST':
+        form = VisitEditForm(request.POST, instance=visit)
+        if form.is_valid():
+            form.save()
+            return redirect('med_card_profile_url', id=visit.med_card.id)
+    else:
+        form = VisitEditForm(instance=visit)
+    return render(request, 'med_app/visit_edit.html', {'form': form, 'visit': visit})
 @custom_login_required
 def all_med_cards_view(request):
     med_cards = MedCard.objects.all()

@@ -57,6 +57,13 @@
                                             <strong class="fs-6">{{ med_card.surname|default:"-" }}</strong>
                                         </div>
                                     </div>
+                                     <div class="d-flex align-items-start mb-2">
+                                        <a href="{% url 'edit_med_card' med_card.id %}" 
+                                            class="btn btn-outline-primary btn-sm px-2 py-1 rounded-circle shadow-sm" 
+                                            title="Редактировать">
+                                            <i class="bi bi-pencil-square"></i>
+                                        </a> 
+                                    </div>
                                 </div>
 
                                 <div class="col-md-6">
@@ -83,7 +90,7 @@
                                             <small class="text-muted d-block">Район</small>
                                             <strong class="fs-6">{{ med_card.district|default:"-" }}</strong>
                                         </div>
-                                    </div>
+                                    </div>                          
                                     {# Телефон #}
                                     <div class="d-flex align-items-start">
                                         <i class="bi bi-telephone-fill text-primary me-2 fs-5"></i>
@@ -115,6 +122,9 @@
                             <th scope="col">Причина</th>
                             <th scope="col">Заметки</th>
                             <th scope="col">Зарегистрировал</th>
+                            <th scope="col">Edit</th>
+                            {# Можно добавить колонку Действие, если нужно #}
+                            {# <th scope="col">Действие</th> #}
                         </tr>
                     </thead>
                     <tbody>
@@ -125,6 +135,15 @@
                             <td>{{ visit.reason|default:"-" }}</td>
                             <td>{{ visit.notes|default:"-" }}</td>
                             <td>{{ visit.operator.get_full_name|default:visit.operator.username|default:"Не указан" }}</td>
+                            {# Пример колонки с действием #}
+                            <td>
+                                <a href="{% url 'visit_edit' visit.id %}" 
+                                    class="btn btn-outline-primary btn-sm px-2 py-1 rounded-circle shadow-sm" 
+                                    title="Редактировать">
+                                    <i class="bi bi-pencil-square"></i>
+                                </a> 
+                            </td>
+                            {# <td><a href="#" class="btn btn-sm btn-outline-info"><i class="bi bi-info-circle-fill me-1"></i>Детали</a></td> #}
                         </tr>
                     {% empty %}
                         <tr>
