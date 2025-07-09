@@ -43,101 +43,48 @@ class MedCardForm(forms.ModelForm):
         }
 
 class CreateMedCartForm(forms.ModelForm):
-    # Новые поля для ввода названий, если город/район отсутствуют в базе
+    # Qo‘shimcha maydon – tashrif sababi
+    reason = forms.CharField(
+        label="Причина первого посещения",
+        required=True,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Например: Жалобы, осмотр...'})
+    )
+
     new_city_name = forms.CharField(
         label="Или введите новый город",
-        required=False,  # Необязательное поле
+        required=False,
         widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Название нового города'})
     )
     new_district_name = forms.CharField(
         label="Или введите новый район",
-        required=False,  # Необязательное поле
+        required=False,
         widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Название нового района'})
     )
 
     class Meta:
         model = MedCard
         fields = (
-            'city',  # Выбор существующего города
-            'new_city_name',  # Ввод нового города
-            'district',  # Выбор существующего района (зависит от city)
-            'new_district_name',  # Ввод нового района
+            'city',
+            'new_city_name',
+            'district',
+            'new_district_name',
             'first_name',
             'last_name',
             'surname',
             'birth_date',
-            'phone_number'
+            'phone_number',
+            # reason bu yerga qo‘shilmaydi, chunki modeldan emas
         )
 
         widgets = {
-            # 'city' и 'district' будут использовать свои стандартные виджеты (Select и ChainedSelect)
             'first_name': forms.TextInput(attrs={'class': 'form-control'}),
             'last_name': forms.TextInput(attrs={'class': 'form-control'}),
             'surname': forms.TextInput(attrs={'class': 'form-control'}),
             'birth_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
-            'phone_number': forms.TextInput(attrs={'class': 'form-control'})
+            'phone_number': forms.TextInput(attrs={'class': 'form-control'}),
         }
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # Делаем поля выбора города и района необязательными на уровне формы,
-        # так как пользователь может вместо них ввести новые названия
-        self.fields['city'].required = False
-        self.fields['district'].required = False
-
-        # Применяем класс к виджетам city и district, если они есть
-        # (для district может потребоваться особый подход из-за ChainedForeignKey)
-        if 'city' in self.fields:
-            self.fields['city'].widget.attrs.update({'class': 'form-control'})
-        if 'district' in self.fields:
-            # ChainedForeignKey может переопределять виджет, применяем класс осторожно
-            # Возможно, класс уже добавлен в вашем коде ChainedForeignKey или его нужно добавить через JS
-            self.fields['district'].widget.attrs.update({'class': 'form-control'})
-
-    def clean(self):
-        """
-        Дополнительная валидация формы.
-        """
-        cleaned_data = super().clean()
-        city = cleaned_data.get('city')
-        new_city_name = cleaned_data.get('new_city_name')
-        district = cleaned_data.get('district')
-        new_district_name = cleaned_data.get('new_district_name')
-
-        # --- Валидация Города ---
-        if not city and not new_city_name:
-            raise ValidationError("Необходимо выбрать существующий город или ввести название нового города.",
-                                  code='city_required')
-        if city and new_city_name:
-            raise ValidationError("Нельзя одновременно выбрать существующий город и ввести название нового.",
-                                  code='city_ambiguous')
-
-        # --- Валидация Района ---
-        # Если введен новый город, то нужно обязательно ввести и новый район
-        if new_city_name and not new_district_name:
-            raise ValidationError("Если вы вводите новый город, необходимо также ввести название нового района.",
-                                  code='new_district_required_for_new_city')
-        # Если введен новый город, нельзя выбирать существующий район
-        if new_city_name and district:
-            raise ValidationError("Если вы вводите новый город, нельзя выбирать район из списка.",
-                                  code='district_invalid_for_new_city')
-
-        # Если выбран существующий город
-        if city:
-            if not district and not new_district_name:
-                raise ValidationError(
-                    f"Для города '{city.name}' необходимо выбрать существующий район или ввести название нового.",
-                    code='district_required')
-            if district and new_district_name:
-                raise ValidationError("Нельзя одновременно выбрать существующий район и ввести название нового.",
-                                      code='district_ambiguous')
-            # Дополнительная проверка: выбранный район должен принадлежать выбранному городу
-            # (ChainedForeignKey обычно сам это проверяет, но для надежности)
-            if district and district.city != city:
-                raise ValidationError(f"Выбранный район '{district.name}' не принадлежит городу '{city.name}'.",
-                                      code='district_mismatch')
-
-        return cleaned_data
+    # __init__ va clean() funksiyalari o‘zgarmaydi
 
 class SearchMedCardForm(forms.Form):
     first_name = forms.CharField(

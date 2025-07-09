@@ -273,10 +273,12 @@ def create_med_cart_post_view(request):
         new_district_name = form.cleaned_data.get('new_district_name')
         selected_city = form.cleaned_data.get('city')
         selected_district = form.cleaned_data.get('district')
+        reason = form.cleaned_data.get('reason')  # 🟢 Qo‘shildi!
 
         final_city = None
         final_district = None
 
+        # --- Shahar va tuman logikasi ---
         if new_city_name:
             city_obj, created = City.objects.get_or_create(
                 name__iexact=new_city_name,
@@ -307,16 +309,25 @@ def create_med_cart_post_view(request):
                                   {'form': form, 'title': 'Создать мед. карту'})
 
         if final_city and final_district:
+            # 🟢 1. MedCard saqlaymiz
             med_card = form.save(commit=False)
             med_card.city = final_city
             med_card.district = final_district
             med_card.save()
-            messages.success(request, f"Медицинская карта для {med_card} успешно создана.")
+
+            # 🟢 2. Visit (tashrif) yaratamiz
+            Visit.objects.create(
+                med_card=med_card,
+                reason=reason
+            )
+
+            messages.success(request, f"Медицинская карта для {med_card} и первое посещение успешно созданы.")
             return redirect('med_card_profile_url', med_card.id)
         else:
             messages.error(request, "Не удалось определить город или район для сохранения медкарты.")
     else:
         messages.error(request, "Пожалуйста, исправьте ошибки в форме.")
+
     return render(request, 'med_app/create_med_cart.html', {
         'form': form,
         'title': 'Создать мед. карту'
