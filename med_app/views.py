@@ -326,41 +326,72 @@ def create_med_cart_post_view(request):
 @custom_login_required
 def med_card_profile_view(request, id):
     med_card = get_object_or_404(MedCard, id=id)
-    base_dir = os.path.join(os.getcwd(), '/mnt/cdr/2025')
+    base_dir = '/mnt/cdr'
     calls = []
 
+    # Search all subdirectories for .wav files matching the med_card's phone number
+    found_files = []
     for root, dirs, files in os.walk(base_dir):
         for file in files:
             if file.endswith('.wav'):
-                parts = file.split('-')
-                if len(parts) >= 2:
-                    phone_number = parts[1]  
-                    if phone_number == str(med_card.phone_number): 
-                        try:
-                            timestamp = parts[-2] 
-                            created_at = datetime.strptime(timestamp, '%Y%m%d-%H%M%S')
-                        except (IndexError, ValueError):
-                            created_at = None
+                # Regex for both out- and q-1001- formats
+                out_pattern = r'^out-(\d+)-(\d+)-(\d{8})-(\d{6})-(.+)\.wav$'
+                q_pattern = r'^q-1001-(\d+)-(\d{8})-(\d{6})-(.+)\.wav$'
+                out_match = re.match(out_pattern, file)
+                q_match = re.match(q_pattern, file)
+                call_data = None
 
-                        relative_path = os.path.relpath(os.path.join(root, file), os.path.join(os.getcwd(), '/mnt/cdr')).replace('\\', '/')
-                        if parts[0] == 'out':
-                            operator=parts[2]
-                        else:
-                            operator=parts[1]
-                        dt_str = f"{parts[3]} {parts[4]}"  
-                        created_at = datetime.strptime(dt_str, "%Y%m%d %H%M%S") 
-                        print(created_at)
-                        print("aaaaaaaaa",operator)
+                if out_match and out_match.group(1) == str(med_card.phone_number):
+                    phone_number = out_match.group(1)
+                    operator = out_match.group(2)
+                    date_str = out_match.group(3)
+                    time_str = out_match.group(4)
+                    dt_str = f"{date_str} {time_str}"
+                    try:
+                        created_at = datetime.strptime(dt_str, "%Y%m%d %H%M%S")
+                    except Exception:
+                        created_at = None
+                    file_path = os.path.join(root, file)
+                    if os.path.getsize(file_path) > 44:
+                        relative_path = os.path.relpath(file_path, base_dir).replace('\\', '/')
                         call_data = {
-                            'id': file, 
+                            'id': file,
                             'phone_number': phone_number,
                             'created_at': created_at,
-                            'operator': operator, 
-                            'wav_path': relative_path, 
+                            'operator': operator,
+                            'wav_path': relative_path,
                         }
-                        calls.append(call_data)
+                elif q_match and q_match.group(1) == str(med_card.phone_number):
+                    phone_number = q_match.group(1)
+                    operator = "1001"
+                    date_str = q_match.group(2)
+                    time_str = q_match.group(3)
+                    dt_str = f"{date_str} {time_str}"
+                    try:
+                        created_at = datetime.strptime(dt_str, "%Y%m%d %H%M%S")
+                    except Exception:
+                        created_at = None
+                    file_path = os.path.join(root, file)
+                    if os.path.getsize(file_path) > 44:
+                        relative_path = os.path.relpath(file_path, base_dir).replace('\\', '/')
+                        call_data = {
+                            'id': file,
+                            'phone_number': phone_number,
+                            'created_at': created_at,
+                            'operator': operator,
+                            'wav_path': relative_path,
+                        }
+                        # Agar aynan shu fayl bo'lsa, logga chiqaramiz
+                        if file == "q-1001-994151224-20250707-095211-1751863931.502.wav":
+                            print(f"✅ Fayl topildi: {file_path}")
+                            found_files.append(file_path)
+                if call_data:
+                    calls.append(call_data)
 
-    calls = sorted(calls, key=lambda x: x['created_at'], reverse=True)
+    if not found_files:
+        print("❌ q-1001-994151224-20250707-095211-1751863931.502.wav fayli topilmadi yoki hajmi <= 44 bayt")
+
+    calls = sorted(calls, key=lambda x: x['created_at'] or datetime.min, reverse=True)
     visits = Visit.objects.filter(med_card=id)
     context = {
         'title': 'Мед. карта',
