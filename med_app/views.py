@@ -161,7 +161,7 @@ def index_view(request):
     context['day_before_yesterday'] = selected_date - timedelta(days=2)
 
     if request.user.is_authenticated:
-        base_dir = '/Users/apple/Desktop/Call_centre/mdecrm/mnt/cdr'
+        base_dir = '/mnt/cdr'
         local_dir = os.path.join(base_dir, f"{selected_date.year}", f"{selected_date.month:02d}", f"{selected_date.day:02d}")
         wav_files = []
         try:
@@ -226,12 +226,11 @@ def index_view(request):
             context['med_cards'] = med_cards
         except Exception as e:
             print(f"DEBUG: Tibbiy kartalarni olishda xato: {e}")  # Debug
-
     return render(request, 'med_app/index.html', context)
 
 @custom_login_required
 def stream_wav_file(request, wav_path):
-    base_dir = os.path.join(os.getcwd(), 'mnt/cdr')
+    base_dir = os.path.join(os.getcwd(), '/mnt/cdr')
     wav_path = os.path.normpath(wav_path.lstrip('/')).replace('\\', '/')
     full_path = os.path.join(base_dir, wav_path)
     if not os.path.exists(full_path):
@@ -327,7 +326,7 @@ def create_med_cart_post_view(request):
 @custom_login_required
 def med_card_profile_view(request, id):
     med_card = get_object_or_404(MedCard, id=id)
-    base_dir = os.path.join(os.getcwd(), 'mnt/cdr/2025')
+    base_dir = os.path.join(os.getcwd(), '/mnt/cdr/2025')
     calls = []
 
     for root, dirs, files in os.walk(base_dir):
@@ -343,7 +342,7 @@ def med_card_profile_view(request, id):
                         except (IndexError, ValueError):
                             created_at = None
 
-                        relative_path = os.path.relpath(os.path.join(root, file), os.path.join(os.getcwd(), 'mnt/cdr')).replace('\\', '/')
+                        relative_path = os.path.relpath(os.path.join(root, file), os.path.join(os.getcwd(), '/mnt/cdr')).replace('\\', '/')
                         if parts[0] == 'out':
                             operator=parts[2]
                         else:

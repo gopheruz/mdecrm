@@ -111,10 +111,10 @@
                                     <td>
                                         <div class="d-flex flex-column flex-sm-row gap-2 align-items-start">
                                             <audio controls class="mb-2 mb-sm-0">
-                                                <source src="{% url 'stream_wav_file' wav_file.path|slice:'47:' %}" type="audio/wav">
+                                                <source src="{% url 'stream_wav_file' wav_file.path|slice:'9:' %}" type="audio/wav">
                                                 Ваш браузер не поддерживает аудио файлы.
                                             </audio>
-                                            <a href="{% url 'download_wav_file' wav_file.path|slice:'47:' %}"
+                                            <a href="{% url 'download_wav_file' wav_file.path|slice:'9:' %}"
                                                 class="btn btn-success btn-sm px-3" download="{{ wav_file.filename }}">
                                                 <i class="bi bi-download me-1"></i>Скачать
                                             </a>
@@ -181,10 +181,15 @@
                                 {% for med_card in med_cards %}
                                 <tr>
                                     <td>{{ forloop.counter }}</td>
-                                    <td >
-                                        <a href="{% url 'med_card_profile_url' med_card.id %}">
+                                    <td>
+                                        {% if med_card.id %}
+                                            <a href="{% url 'med_card_profile_url' med_card.id %}">
+                                                {{ med_card.last_name }} {{ med_card.first_name }} {{ med_card.surname }}
+                                            </a>
+                                        {% else %}
                                             {{ med_card.last_name }} {{ med_card.first_name }} {{ med_card.surname }}
-                                        </td>
+                                        {% endif %}
+                                    </td>
                                     <td style="width: 100px;">{{ med_card.birth_date|date:"d.m.Y" }}</td>
                                     <td style="width: 150px;">{{ med_card.city.name|default:"-" }}</td>
                                     <td style="width: 150px;">{{ med_card.district.name|default:"-" }}</td>
