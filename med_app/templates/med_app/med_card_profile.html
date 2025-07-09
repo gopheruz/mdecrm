@@ -137,12 +137,11 @@
                                         <i class="bi bi-download me-1"></i>Скачать
                                     </a>
                                 </div>
-                               
                             </td>
                         </tr>
                         {% empty %}
                         <tr>
-                             <td colspan="6" class="text-center fst-italic text-muted py-3"> {# Обновлен colspan #}
+                            <td colspan="6" class="text-center fst-italic text-muted py-3"> {# Обновлен colspan #}
                                 <i class="bi bi-exclamation-circle me-2"></i>Звонков не найдено.
                             </td>
                         </tr>
@@ -219,5 +218,20 @@
         border-radius: 0.5rem;
     }
 </style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const audios = document.querySelectorAll('audio');
+        audios.forEach(audio => {
+            audio.addEventListener('play', function() {
+                audios.forEach(otherAudio => {
+                    if (otherAudio !== audio && !otherAudio.paused) {
+                        otherAudio.pause();
+                    }
+                });
+            });
+        });
+    });
+</script>
 
 {% endblock main %}
