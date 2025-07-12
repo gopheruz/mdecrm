@@ -8,32 +8,32 @@
 
 {% block main %}
 <div class="container mt-4">
+    <h2 class="mb-4">📊 Аналитика за {{ today }}</h2>
+
     <ul class="nav nav-tabs" id="analyticsTabs" role="tablist">
         <li class="nav-item" role="presentation">
             <button class="nav-link active" id="visits-tab" data-bs-toggle="tab"
                     data-bs-target="#visits" type="button" role="tab"
                     aria-controls="visits" aria-selected="true">
-                Аналитика посещений
+                Посещения
             </button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link" id="calls-tab" data-bs-toggle="tab"
                     data-bs-target="#calls" type="button" role="tab"
                     aria-controls="calls" aria-selected="false">
-                Аналитика звонков
+                Звонки
             </button>
         </li>
     </ul>
 
-    <div class="tab-content p-3 border border-top-0 rounded-bottom">
-        <!-- Вкладка посещений -->
+    <div class="tab-content p-3 border border-top-0 rounded-bottom bg-white">
+        <!-- Посещения -->
         <div class="tab-pane fade show active" id="visits" role="tabpanel" aria-labelledby="visits-tab">
-            <h4 class="mb-4">Посещения за {{ today }}</h4>
-
-            <div class="row">
+            <div class="row gy-3">
                 <div class="col-md-8">
                     <div class="card shadow-sm">
-                        <div class="card-header bg-light">
+                        <div class="card-header bg-primary text-white">
                             <h5 class="mb-0">По часам</h5>
                         </div>
                         <div class="card-body">
@@ -44,25 +44,56 @@
 
                 <div class="col-md-4">
                     <div class="card shadow-sm">
-                        <div class="card-header bg-light">
+                        <div class="card-header bg-info text-white">
                             <h5 class="mb-0">Части дня</h5>
                         </div>
                         <div class="card-body">
                             <canvas id="visitsPartsChart"></canvas>
                         </div>
                     </div>
+
+                    <div class="card mt-3 shadow-sm">
+                        <div class="card-header bg-success text-white">
+                            <h5 class="mb-0">📅 Самый активный день</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if busiest_day %}
+                                <p><strong>{{ busiest_day }}</strong> — <span class="text-muted">{{ busiest_day_count }} посещений</span></p>
+                            {% else %}
+                                <p class="text-muted">Нет данных за последние 30 дней.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-12">
+                    <div class="card mt-3 shadow-sm">
+                        <div class="card-header bg-warning text-dark">
+                            <h5 class="mb-0">👥 Топ 5 пациентов по посещениям</h5>
+                        </div>
+                        <div class="card-body">
+                            <ul class="list-group">
+                                {% for p in top_patients %}
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        {{ p.med_card__last_name }} {{ p.med_card__first_name }}
+                                        <span class="badge bg-primary rounded-pill">{{ p.visit_count }}</span>
+                                    </li>
+                                {% empty %}
+                                    <li class="list-group-item text-muted">Нет данных</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- Вкладка звонков -->
+        <!-- Звонки -->
         <div class="tab-pane fade" id="calls" role="tabpanel" aria-labelledby="calls-tab">
-            <h4 class="mb-4">Звонки за последние 7 дней</h4>
-
-            <div class="row">
+            <div class="row gy-3">
                 <div class="col-md-8">
                     <div class="card shadow-sm">
-                        <div class="card-header bg-light">
+                        <div class="card-header bg-danger text-white">
                             <h5 class="mb-0">Динамика звонков</h5>
                         </div>
                         <div class="card-body">
@@ -73,11 +104,22 @@
 
                 <div class="col-md-4">
                     <div class="card shadow-sm">
-                        <div class="card-header bg-light">
-                            <h5 class="mb-0">Топ операторов</h5>
+                        <div class="card-header bg-secondary text-white">
+                            <h5 class="mb-0">🏆 Топ операторы</h5>
                         </div>
                         <div class="card-body">
                             <canvas id="callsOperatorsChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-12">
+                    <div class="card mt-3 shadow-sm">
+                        <div class="card-header bg-dark text-white">
+                            <h5 class="mb-0">📈 Вопросы по отделениям</h5>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="questionsByDepartmentChart"></canvas>
                         </div>
                     </div>
                 </div>
@@ -85,36 +127,34 @@
         </div>
     </div>
 </div>
+
 {% endblock main %}
 
 {% block scripts %}
 {{ block.super }}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Сохраняем активную вкладку
+document.addEventListener('DOMContentLoaded', function () {
+    // Вкладка
     const analyticsTabs = document.getElementById('analyticsTabs');
     if (analyticsTabs) {
-        analyticsTabs.addEventListener('click', function(e) {
+        analyticsTabs.addEventListener('click', function (e) {
             if (e.target.classList.contains('nav-link')) {
                 localStorage.setItem('activeAnalyticsTab', e.target.id);
             }
         });
-
-        // Восстанавливаем активную вкладку
         const activeTab = localStorage.getItem('activeAnalyticsTab') || 'visits-tab';
         const tab = new bootstrap.Tab(document.getElementById(activeTab));
         tab.show();
     }
 
-    // Графики посещений
-    const visitsHourlyCtx = document.getElementById('visitsHourlyChart');
-    new Chart(visitsHourlyCtx, {
+    // Посещения по часам
+    new Chart(document.getElementById('visitsHourlyChart'), {
         type: 'bar',
         data: {
-            labels: Array.from({length: 24}, (_, i) => i + ':00'),
+            labels: Array.from({length: 24}, (_, i) => i + ":00"),
             datasets: [{
-                label: 'Количество посещений',
+                label: "Количество посещений",
                 data: {{ visits_hourly_data|safe }},
                 backgroundColor: 'rgba(54, 162, 235, 0.7)',
                 borderColor: 'rgba(54, 162, 235, 1)',
@@ -129,8 +169,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    const visitsPartsCtx = document.getElementById('visitsPartsChart');
-    new Chart(visitsPartsCtx, {
+    // Части дня
+    new Chart(document.getElementById('visitsPartsChart'), {
         type: 'doughnut',
         data: {
             labels: {{ visits_parts_labels|safe }},
@@ -145,18 +185,17 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Графики звонков
-    const callsDailyCtx = document.getElementById('callsDailyChart');
-    new Chart(callsDailyCtx, {
+    // Звонки по дням
+    new Chart(document.getElementById('callsDailyChart'), {
         type: 'line',
         data: {
             labels: {{ calls_days|safe }},
             datasets: [{
-                label: 'Звонков',
+                label: "Звонков",
                 data: {{ calls_counts|safe }},
                 borderColor: 'rgba(255, 99, 132, 1)',
                 backgroundColor: 'rgba(255, 99, 132, 0.2)',
-                tension: 0.1,
+                tension: 0.3,
                 fill: true
             }]
         },
@@ -168,15 +207,15 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    const callsOperatorsCtx = document.getElementById('callsOperatorsChart');
-    new Chart(callsOperatorsCtx, {
+    // Топ операторов
+    new Chart(document.getElementById('callsOperatorsChart'), {
         type: 'bar',
         data: {
             labels: {{ calls_by_operator|map_attribute:'operator__username'|safe }},
             datasets: [{
-                label: 'Звонков',
+                label: "Звонков",
                 data: {{ calls_by_operator|map_attribute:'count'|safe }},
-                backgroundColor: 'rgba(75, 192, 192, 0.7)'
+                backgroundColor: 'rgba(255, 159, 64, 0.7)'
             }]
         },
         options: {
@@ -185,6 +224,25 @@ document.addEventListener('DOMContentLoaded', function() {
             scales: {
                 x: { beginAtZero: true }
             }
+        }
+    });
+
+    // Вопросы по отделениям
+    new Chart(document.getElementById('questionsByDepartmentChart'), {
+        type: 'pie',
+        data: {
+            labels: {{ questions_by_department|map_attribute:'name'|safe }},
+            datasets: [{
+                data: {{ questions_by_department|map_attribute:'total_questions'|safe }},
+                backgroundColor: [
+                    'rgba(255, 99, 132, 0.7)',
+                    'rgba(54, 162, 235, 0.7)',
+                    'rgba(255, 206, 86, 0.7)',
+                    'rgba(75, 192, 192, 0.7)',
+                    'rgba(153, 102, 255, 0.7)',
+                    'rgba(255, 159, 64, 0.7)'
+                ]
+            }]
         }
     });
 });

@@ -14,12 +14,12 @@ from django.http import (
 )
 from django.shortcuts import render, get_object_or_404, redirect
 from django.utils import timezone
-
+from django.http import HttpResponse
+from django.utils.dateparse import parse_date
 import openpyxl
 from openpyxl.styles import Font, Alignment, PatternFill
 from openpyxl.utils import get_column_letter
 from openpyxl.workbook import Workbook
-
 from med_app.forms import *
 from med_app.models import *
 from django.db.models import Q
@@ -870,9 +870,21 @@ def visits_report_view(request):
                 return response
     return redirect('reports_url')
 
+from django.db.models import Count, Case, When, IntegerField, Avg
+from django.db.models.functions import ExtractHour, TruncDay
+from django.shortcuts import render
+from django.utils import timezone
+from datetime import timedelta
+from .models import Visit, Call, Department, MedCard
+from django.contrib.auth.decorators import login_required
+from django.core.serializers.json import DjangoJSONEncoder
+import json
+
 @custom_login_required
 def analytics_view(request):
     today = timezone.now().date()
+
+    # --- Tashriflar soat bo‘yicha taqsimoti (24 soat) ---
     visits_hourly = Visit.objects.filter(
         visit_time__date=today
     ).annotate(
@@ -880,9 +892,12 @@ def analytics_view(request):
     ).values('hour').annotate(
         count=Count('id')
     ).order_by('hour')
+
     visits_hourly_data = [0] * 24
     for item in visits_hourly:
         visits_hourly_data[item['hour']] = item['count']
+
+    # --- Tashriflar kun qismlariga bo‘linishi ---
     visits_day_parts = Visit.objects.filter(
         visit_time__date=today
     ).annotate(
@@ -895,9 +910,12 @@ def analytics_view(request):
     ).values('part').annotate(
         count=Count('id')
     ).order_by('part')
+
     visits_parts_data = [0, 0, 0]
     for item in visits_day_parts:
         visits_parts_data[item['part']] = item['count']
+
+    # --- Oxirgi 7 kunlik qo‘ng‘iroqlar ---
     calls_daily = Call.objects.filter(
         created_at__gte=today - timedelta(days=7)
     ).annotate(
@@ -905,8 +923,11 @@ def analytics_view(request):
     ).values('day').annotate(
         count=Count('id')
     ).order_by('day')
+
     calls_days = [item['day'].strftime('%d.%m') for item in calls_daily]
     calls_counts = [item['count'] for item in calls_daily]
+
+    # --- Eng faol operatorlar (so‘nggi 7 kun) ---
     calls_by_operator = Call.objects.filter(
         created_at__gte=today - timedelta(days=7)
     ).values(
@@ -914,15 +935,59 @@ def analytics_view(request):
     ).annotate(
         count=Count('id')
     ).order_by('-count')[:5]
+
+    # --- Oxirgi 30 kunda eng ko‘p tashrif bo‘lgan kun ---
+    busiest_day = Visit.objects.filter(
+        visit_time__gte=today - timedelta(days=30)
+    ).annotate(
+        day=TruncDay('visit_time')
+    ).values('day').annotate(
+        count=Count('id')
+    ).order_by('-count').first()
+
+    # --- Eng ko‘p tashrif qilgan bemorlar (top 5) ---
+    top_patients = Visit.objects.values(
+        'med_card__first_name', 'med_card__last_name'
+    ).annotate(
+        visit_count=Count('id')
+    ).order_by('-visit_count')[:5]
+
+    # --- Department (bo‘lim) bo‘yicha so‘rovlar soni ---
+    questions_by_department = Department.objects.annotate(
+        total_questions=Count('questions')
+    ).values('name', 'total_questions').order_by('-total_questions')
+
+    # --- So‘nggi 7 kunlik tashriflar soni ---
+    visits_last_7_days = Visit.objects.filter(
+        visit_time__gte=today - timedelta(days=7)
+    ).annotate(
+        day=TruncDay('visit_time')
+    ).values('day').annotate(
+        count=Count('id')
+    ).order_by('day')
+
+    visits_7d_labels = [v['day'].strftime('%d.%m') for v in visits_last_7_days]
+    visits_7d_counts = [v['count'] for v in visits_last_7_days]
+
     context = {
         'today': today.strftime('%d.%m.%Y'),
         'visits_hours': list(range(24)),
         'visits_hourly_data': visits_hourly_data,
         'visits_parts_labels': ['Ночь (0-8)', 'День (8-16)', 'Вечер (16-24)'],
         'visits_parts_data': visits_parts_data,
-        'calls_days': calls_days,
-        'calls_counts': calls_counts,
+
+        'calls_days': json.dumps(calls_days, cls=DjangoJSONEncoder),
+        'calls_counts': json.dumps(calls_counts, cls=DjangoJSONEncoder),
         'calls_by_operator': list(calls_by_operator),
+
+        'busiest_day': busiest_day['day'].strftime('%d.%m.%Y') if busiest_day else None,
+        'busiest_day_count': busiest_day['count'] if busiest_day else 0,
+
+        'top_patients': list(top_patients),
+        'questions_by_department': list(questions_by_department),
+
+        'visits_7d_labels': json.dumps(visits_7d_labels),
+        'visits_7d_counts': json.dumps(visits_7d_counts),
     }
     return render(request, 'med_app/analytics.html', context)
 
@@ -948,3 +1013,45 @@ def download_wav_file(request, wav_path):
         return response
     except Exception as e:
         return HttpResponseServerError(f"Ошибка скачивания файла: {str(e)}")
+    
+
+def export_excel_view(request):
+    start_date = request.GET.get("start_date")
+    end_date = request.GET.get("end_date")
+
+    if not start_date or not end_date:
+        return HttpResponse("Iltimos, sanalarni tanlang.", status=400)
+
+    start = parse_date(start_date)
+    end = parse_date(end_date)
+
+    medcards = MedCard.objects.filter(created_at__date__range=(start, end))
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "MedCard"
+
+    headers = [
+        "ID", "Familiya", "Ism", "Otasining ismi", "Telefon", "Tug'ilgan sana", "Shahar", "Tuman", "Yaratilgan sana"
+    ]
+    ws.append(headers)
+
+    for m in medcards:
+        ws.append([
+            m.id,
+            m.last_name,
+            m.first_name,
+            m.surname,
+            m.phone_number,
+            m.birth_date.strftime('%Y-%m-%d'),
+            m.city.name if m.city else "",
+            m.district.name if m.district else "",
+            m.created_at.strftime('%Y-%m-%d %H:%M')
+        ])
+
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename=medcards_{start}_{end}.xlsx'
+    wb.save(response)
+    return response

@@ -28,4 +28,5 @@ urlpatterns = [
     path('favicon.ico', RedirectView.as_view(url='/static/favicon.ico')),
     path('medcard/edit/<int:pk>/', edit_med_card, name='edit_med_card'),
     path('visit/<int:visit_id>/edit/', visit_edit, name='visit_edit'),
+    path('export-excel/', export_excel_view, name='export_excel_url'),
 ]
