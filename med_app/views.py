@@ -269,16 +269,16 @@ def create_med_cart_get_view(request):
 def create_med_cart_post_view(request):
     form = CreateMedCartForm(request.POST)
     if form.is_valid():
+        # 1. Formdan ma’lumotlar
         new_city_name = form.cleaned_data.get('new_city_name')
         new_district_name = form.cleaned_data.get('new_district_name')
         selected_city = form.cleaned_data.get('city')
         selected_district = form.cleaned_data.get('district')
-        reason = form.cleaned_data.get('reason')  # 🟢 Qo‘shildi!
+        reason = form.cleaned_data.get('reason')
 
         final_city = None
         final_district = None
 
-        # --- Shahar va tuman logikasi ---
         if new_city_name:
             city_obj, created = City.objects.get_or_create(
                 name__iexact=new_city_name,
@@ -290,6 +290,7 @@ def create_med_cart_post_view(request):
         elif selected_city:
             final_city = selected_city
 
+        # 3. Tuman logikasi
         if final_city:
             if new_district_name:
                 district_obj, created = District.objects.get_or_create(
@@ -305,29 +306,44 @@ def create_med_cart_post_view(request):
                     final_district = selected_district
                 else:
                     messages.error(request, "Ошибка: Выбранный район не соответствует городу.")
-                    return render(request, 'med_app/create_med_cart.html',
-                                  {'form': form, 'title': 'Создать мед. карту'})
+                    return render(request, 'med_app/create_med_cart.html', {
+                        'form': form,
+                        'title': 'Создать мед. карту'
+                    })
 
+        # 4. MedCard va Visit yaratish
         if final_city and final_district:
-            # 🟢 1. MedCard saqlaymiz
             med_card = form.save(commit=False)
             med_card.city = final_city
             med_card.district = final_district
-            med_card.save()
+            med_card.user = request.user  # ⚠️ Majburiy maydon bo‘lishi mumkin
 
-            # 🟢 2. Visit (tashrif) yaratamiz
+            try:
+                med_card.full_clean()
+                print(med_card.pk)
+                med_card.save()
+                print("✅ MedCard saqlandi. PK:", med_card.pk)
+            except Exception as e:
+                print("❌ full_clean() yoki save() xatolik:", e)
+                messages.error(request, f"Xatolik: {e}")
+                return render(request, 'med_app/create_med_cart.html', {
+                    'form': form,
+                    'title': 'Создать мед. карту'
+                })
+
             Visit.objects.create(
                 med_card=med_card,
                 reason=reason
             )
 
             messages.success(request, f"Медицинская карта для {med_card} и первое посещение успешно созданы.")
-            return redirect('med_card_profile_url', med_card.id)
+            return redirect('index_url')
         else:
             messages.error(request, "Не удалось определить город или район для сохранения медкарты.")
     else:
         messages.error(request, "Пожалуйста, исправьте ошибки в форме.")
 
+    # Xatolik bo‘lsa formni qayta ko‘rsatish
     return render(request, 'med_app/create_med_cart.html', {
         'form': form,
         'title': 'Создать мед. карту'
@@ -397,9 +413,6 @@ def med_card_profile_view(request, id):
                             found_files.append(file_path)
                 if call_data:
                     calls.append(call_data)
-
-    if not found_files:
-        print("❌ q-1001-994151224-20250707-095211-1751863931.502.wav fayli topilmadi yoki hajmi <= 44 bayt")
 
     calls = sorted(calls, key=lambda x: x['created_at'] or datetime.min, reverse=True)
     visits = Visit.objects.filter(med_card=id)

@@ -121,7 +121,6 @@
                             <th scope="col">Дата/Время</th>
                             <th scope="col">Причина</th>
                             <th scope="col">Заметки</th>
-                            <th scope="col">Зарегистрировал</th>
                             <th scope="col">Edit</th>
                             {# Можно добавить колонку Действие, если нужно #}
                             {# <th scope="col">Действие</th> #}
@@ -134,7 +133,6 @@
                             <td>{{ visit.visit_time|date:"d.m.Y H:i" }}</td>
                             <td>{{ visit.reason|default:"-" }}</td>
                             <td>{{ visit.notes|default:"-" }}</td>
-                            <td>{{ visit.operator.get_full_name|default:visit.operator.username|default:"Не указан" }}</td>
                             {# Пример колонки с действием #}
                             <td>
                                 <a href="{% url 'visit_edit' visit.id %}" 
