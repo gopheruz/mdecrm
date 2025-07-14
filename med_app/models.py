@@ -50,7 +50,7 @@ class MedCard(models.Model):
     birth_date = models.DateField("Дата рождения")
     created_at = models.DateTimeField(
         "Дата создания",
-        default=timezone.datetime(2025, 7, 1, tzinfo=timezone.get_current_timezone())
+        default=timezone.now
     )
 
     def __str__(self):
