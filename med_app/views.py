@@ -160,7 +160,7 @@ def index_view(request):
 
     if request.user.is_authenticated:
         
-        base_dir = os.path.join(settings.BASE_DIR, 'mnt', 'cdr')
+        base_dir = os.path.join(settings.BASE_DIR, '/mnt', 'cdr')
         local_dir = os.path.join(base_dir, f"{selected_date.year}", f"{selected_date.month:02d}", f"{selected_date.day:02d}")
         wav_files = []
         try:
@@ -984,7 +984,7 @@ def analytics_view(request):
 
 @custom_login_required
 def download_wav_file(request, wav_path):
-    base_dir = os.path.join(settings.BASE_DIR, 'mnt', 'cdr')
+    base_dir = os.path.join(settings.BASE_DIR, '/mnt', 'cdr')
     wav_path = wav_path.strip('/')
     if wav_path.startswith('/mnt/cdr'):
         wav_path = wav_path[8:]
@@ -1086,7 +1086,7 @@ def export_excel_zvonok_view(request):
     ])
 
     
-    base_dir = os.path.join(settings.BASE_DIR, 'mnt', 'cdr')
+    base_dir = os.path.join(settings.BASE_DIR, '/mnt', 'cdr')
     pattern = r'(out|q-1001)-(\d+)(?:-(\d+))?-(\d{8})-(\d{6})-(\d+\.\d+)\.wav'
 
     current_date = start_date
