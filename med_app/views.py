@@ -25,12 +25,11 @@ from med_app.models import *
 from django.db.models import Q
 import fnmatch
 from django.contrib.auth.views import redirect_to_login
-
-from django.shortcuts import render, get_object_or_404, redirect
-from django.urls import reverse
-from .models import MedCard, City, District
-from .forms import MedCardForm,VisitEditForm
-
+import tempfile
+from django.conf import settings
+from django.db.models import Count, Case, When, IntegerField, Avg
+from django.core.serializers.json import DjangoJSONEncoder
+import json
 @login_required
 def serve_recording_view(request, call_id):
     call_instance = get_object_or_404(Call, id=call_id)
@@ -160,7 +159,8 @@ def index_view(request):
     context['day_before_yesterday'] = selected_date - timedelta(days=2)
 
     if request.user.is_authenticated:
-        base_dir = '/mnt/cdr'
+        
+        base_dir = os.path.join(settings.BASE_DIR, 'mnt', 'cdr')
         local_dir = os.path.join(base_dir, f"{selected_date.year}", f"{selected_date.month:02d}", f"{selected_date.day:02d}")
         wav_files = []
         try:
@@ -870,15 +870,6 @@ def visits_report_view(request):
                 return response
     return redirect('reports_url')
 
-from django.db.models import Count, Case, When, IntegerField, Avg
-from django.db.models.functions import ExtractHour, TruncDay
-from django.shortcuts import render
-from django.utils import timezone
-from datetime import timedelta
-from .models import Visit, Call, Department, MedCard
-from django.contrib.auth.decorators import login_required
-from django.core.serializers.json import DjangoJSONEncoder
-import json
 
 @custom_login_required
 def analytics_view(request):
@@ -993,7 +984,7 @@ def analytics_view(request):
 
 @custom_login_required
 def download_wav_file(request, wav_path):
-    base_dir = "/mnt/cdr"
+    base_dir = os.path.join(settings.BASE_DIR, 'mnt', 'cdr')
     wav_path = wav_path.strip('/')
     if wav_path.startswith('/mnt/cdr'):
         wav_path = wav_path[8:]
@@ -1015,10 +1006,6 @@ def download_wav_file(request, wav_path):
         return HttpResponseServerError(f"Ошибка скачивания файла: {str(e)}")
     
 
-from django.db.models import Q
-from django.utils.dateparse import parse_date
-from django.http import HttpResponse
-import openpyxl
 
 def export_excel_view(request):
     start_date = request.GET.get("start_date")
@@ -1071,3 +1058,85 @@ def export_excel_view(request):
     response['Content-Disposition'] = f'attachment; filename=medcards_{start}_{end}.xlsx'
     wb.save(response)
     return response
+
+
+
+def export_excel_zvonok_view(request):
+    start_date_str = request.GET.get('start_date')
+    end_date_str = request.GET.get('end_date')
+
+    try:
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+    except (TypeError, ValueError):
+        return HttpResponse("Noto‘g‘ri sana formati!", status=400)
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Zvonoklar"
+
+    # Sarlavhalar
+    ws.append([
+        "Fayl nomi",
+        "Telefon raqam",
+        "IP operator",
+        "Qo‘ng‘iroq vaqti",
+        "Sana",
+        "Fayl hajmi (bayt)"
+    ])
+
+    
+    base_dir = os.path.join(settings.BASE_DIR, 'mnt', 'cdr')
+    pattern = r'(out|q-1001)-(\d+)(?:-(\d+))?-(\d{8})-(\d{6})-(\d+\.\d+)\.wav'
+
+    current_date = start_date
+    while current_date <= end_date:
+        local_dir = os.path.join(
+            base_dir,
+            f"{current_date.year}",
+            f"{current_date.month:02d}",
+            f"{current_date.day:02d}"
+        )
+
+        if os.path.exists(local_dir):
+            for filename in os.listdir(local_dir):
+                if filename.endswith('.wav'):
+                    file_path = os.path.join(local_dir, filename).replace('\\', '/')
+                    try:
+                        file_size = os.path.getsize(file_path)
+                        if file_size > 44:
+                            match = re.match(pattern, filename)
+                            if match:
+                                file_prefix, first_num, second_num, date_str, time_str, duration_str = match.groups()
+
+                                if file_prefix == 'out':
+                                    phone_number = first_num
+                                    ip_operator = second_num or '-'
+                                else:
+                                    phone_number = first_num
+                                    ip_operator = '1001'
+
+                                call_time = f"{time_str[:2]}:{time_str[2:4]}:{time_str[4:6]}"
+                                call_date = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}"
+                                phone_number = f"+{phone_number}" if not phone_number.startswith('+') else phone_number
+                                duration = float(duration_str)
+
+                                ws.append([
+                                    filename,
+                                    phone_number,
+                                    ip_operator,
+                                    call_time,
+                                    call_date,
+                                    file_size,
+                                ])
+                    except Exception as e:
+                        print(f"❌ Xatolik fayl bilan ishlashda: {filename} | {e}")
+
+        current_date += timedelta(days=1)
+
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp:
+        wb.save(tmp.name)
+        tmp.seek(0)
+        response = HttpResponse(tmp.read(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename=zvonok_export.xlsx'
+        return response

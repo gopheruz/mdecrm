@@ -54,6 +54,12 @@
                     </button>
                 </li>
                 <li class="nav-item">
+                    <button class="nav-link active fw-bold" data-bs-toggle="modal" data-bs-target="#exportZvonokModal">
+                        📞 Экспорт звонков
+                    </button>
+                </li>
+
+                <li class="nav-item">
                     <a class="nav-link active fw-bold" aria-current="page"
                        href="{% url 'analytics_url' %}">
                         <i class="bi bi-house-door-fill me-1"></i>
@@ -102,7 +108,6 @@
     </div>
 </nav>
 
-<!-- Modal oyna -->
 <div class="modal fade" id="exportModal" tabindex="-1" aria-labelledby="exportModalLabel" aria-hidden="true">
   <div class="modal-dialog">
     <form method="GET" action="{% url 'export_excel_url' %}">
@@ -128,6 +133,32 @@
     </form>
   </div>
 </div>
+<div class="modal fade" id="exportZvonokModal" tabindex="-1" aria-labelledby="exportZvonokModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <form method="GET" action="{% url 'export_excel_zvonok_url' %}">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exportZvonokModalLabel">Zvonok Excel eksporti uchun sanalarni tanlang</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Yopish"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="start_date_zvonok" class="form-label">Boshlanish sanasi</label>
+                    <input type="date" class="form-control" name="start_date" required>
+                </div>
+                <div class="mb-3">
+                    <label for="end_date_zvonok" class="form-label">Tugash sanasi</label>
+                    <input type="date" class="form-control" name="end_date" required>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="submit" class="btn btn-primary">Yuklab olish</button>
+            </div>
+        </div>
+    </form>
+  </div>
+</div>
+
 
 </header>
 
