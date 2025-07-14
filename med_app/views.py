@@ -1015,6 +1015,11 @@ def download_wav_file(request, wav_path):
         return HttpResponseServerError(f"Ошибка скачивания файла: {str(e)}")
     
 
+from django.db.models import Q
+from django.utils.dateparse import parse_date
+from django.http import HttpResponse
+import openpyxl
+
 def export_excel_view(request):
     start_date = request.GET.get("start_date")
     end_date = request.GET.get("end_date")
@@ -1025,28 +1030,39 @@ def export_excel_view(request):
     start = parse_date(start_date)
     end = parse_date(end_date)
 
-    medcards = MedCard.objects.filter(created_at__date__range=(start, end))
+    visits = Visit.objects.filter(
+        visit_time__date__range=(start, end)
+    ).select_related('med_card__city', 'med_card__district')
+
+    # MedCard + visit_time mapping (oxirgi tashrif)
+    medcard_visit_map = {}
+
+    for visit in visits:
+        medcard = visit.med_card
+        # Har bir MedCard uchun eng so‘nggi tashrifni saqlaymiz
+        if medcard not in medcard_visit_map or visit.visit_time > medcard_visit_map[medcard]:
+            medcard_visit_map[medcard] = visit.visit_time
 
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "MedCard"
 
     headers = [
-        "ID", "Familiya", "Ism", "Otasining ismi", "Telefon", "Tug'ilgan sana", "Shahar", "Tuman", "Yaratilgan sana"
+        "ID", "Familiya", "Ism", "Otasining ismi", "Telefon", "Tug'ilgan sana", "Shahar", "Tuman", "Tashrif vaqti"
     ]
     ws.append(headers)
 
-    for m in medcards:
+    for m, visit_time in medcard_visit_map.items():
         ws.append([
             m.id,
             m.last_name,
             m.first_name,
             m.surname,
             m.phone_number,
-            m.birth_date.strftime('%Y-%m-%d'),
+            m.birth_date.strftime('%Y-%m-%d') if m.birth_date else "",
             m.city.name if m.city else "",
             m.district.name if m.district else "",
-            m.created_at.strftime('%Y-%m-%d %H:%M')
+            visit_time.strftime('%Y-%m-%d %H:%M')
         ])
 
     response = HttpResponse(
