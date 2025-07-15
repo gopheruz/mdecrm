@@ -1005,8 +1005,7 @@ def download_wav_file(request, wav_path):
     except Exception as e:
         return HttpResponseServerError(f"Ошибка скачивания файла: {str(e)}")
     
-
-
+@custom_login_required
 def export_excel_view(request):
     start_date = request.GET.get("start_date")
     end_date = request.GET.get("end_date")
@@ -1021,35 +1020,38 @@ def export_excel_view(request):
         visit_time__date__range=(start, end)
     ).select_related('med_card__city', 'med_card__district')
 
-    # MedCard + visit_time mapping (oxirgi tashrif)
+    # MedCard + visit mapping (oxirgi tashrif)
     medcard_visit_map = {}
 
     for visit in visits:
         medcard = visit.med_card
         # Har bir MedCard uchun eng so‘nggi tashrifni saqlaymiz
-        if medcard not in medcard_visit_map or visit.visit_time > medcard_visit_map[medcard]:
-            medcard_visit_map[medcard] = visit.visit_time
+        if medcard not in medcard_visit_map or visit.visit_time > medcard_visit_map[medcard].visit_time:
+            medcard_visit_map[medcard] = visit  # endi to‘g‘ridan-to‘g‘ri visit obyektini saqlaymiz
 
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "MedCard"
 
     headers = [
-        "ID", "Familiya", "Ism", "Otasining ismi", "Telefon", "Tug'ilgan sana", "Shahar", "Tuman", "Tashrif vaqti"
+        "ID", "Familiya", "Ism", "Otasining ismi", "Telefon", "Tug'ilgan sana", "Shahar", "Tuman",
+        "Tashrif vaqti", "Tashrif sababi", "Zametkalar"
     ]
     ws.append(headers)
 
-    for m, visit_time in medcard_visit_map.items():
+    for medcard, visit in medcard_visit_map.items():
         ws.append([
-            m.id,
-            m.last_name,
-            m.first_name,
-            m.surname,
-            m.phone_number,
-            m.birth_date.strftime('%Y-%m-%d') if m.birth_date else "",
-            m.city.name if m.city else "",
-            m.district.name if m.district else "",
-            visit_time.strftime('%Y-%m-%d %H:%M')
+            medcard.id,
+            medcard.last_name,
+            medcard.first_name,
+            medcard.surname,
+            medcard.phone_number,
+            medcard.birth_date.strftime('%Y-%m-%d') if medcard.birth_date else "",
+            medcard.city.name if medcard.city else "",
+            medcard.district.name if medcard.district else "",
+            visit.visit_time.strftime('%Y-%m-%d %H:%M'),
+            visit.reason or "",
+            visit.notes or ""
         ])
 
     response = HttpResponse(
@@ -1060,7 +1062,7 @@ def export_excel_view(request):
     return response
 
 
-
+@custom_login_required
 def export_excel_zvonok_view(request):
     start_date_str = request.GET.get('start_date')
     end_date_str = request.GET.get('end_date')
