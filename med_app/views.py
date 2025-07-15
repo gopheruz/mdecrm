@@ -160,7 +160,7 @@ def index_view(request):
 
     if request.user.is_authenticated:
         
-        base_dir = os.path.join(settings.BASE_DIR, 'mnt', 'cdr')
+        base_dir = os.path.join(settings.BASE_DIR, '/mnt', 'cdr')
         local_dir = os.path.join(base_dir, f"{selected_date.year}", f"{selected_date.month:02d}", f"{selected_date.day:02d}")
         wav_files = []
         try:
@@ -984,7 +984,7 @@ def analytics_view(request):
 
 @custom_login_required
 def download_wav_file(request, wav_path):
-    base_dir = os.path.join(settings.BASE_DIR, 'mnt', 'cdr')
+    base_dir = os.path.join(settings.BASE_DIR, '/mnt', 'cdr')
     wav_path = wav_path.strip('/')
     if wav_path.startswith('/mnt/cdr'):
         wav_path = wav_path[8:]
@@ -1020,14 +1020,12 @@ def export_excel_view(request):
         visit_time__date__range=(start, end)
     ).select_related('med_card__city', 'med_card__district')
 
-    # MedCard + visit mapping (oxirgi tashrif)
     medcard_visit_map = {}
 
     for visit in visits:
         medcard = visit.med_card
-        # Har bir MedCard uchun eng so‘nggi tashrifni saqlaymiz
         if medcard not in medcard_visit_map or visit.visit_time > medcard_visit_map[medcard].visit_time:
-            medcard_visit_map[medcard] = visit  # endi to‘g‘ridan-to‘g‘ri visit obyektini saqlaymiz
+            medcard_visit_map[medcard] = visit 
 
     wb = openpyxl.Workbook()
     ws = wb.active
@@ -1088,7 +1086,7 @@ def export_excel_zvonok_view(request):
     ])
 
     
-    base_dir = os.path.join(settings.BASE_DIR, 'mnt', 'cdr')
+    base_dir = os.path.join(settings.BASE_DIR, '/mnt', 'cdr')
     pattern = r'(out|q-1001)-(\d+)(?:-(\d+))?-(\d{8})-(\d{6})-(\d+\.\d+)\.wav'
 
     current_date = start_date
