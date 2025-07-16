@@ -200,8 +200,8 @@ def index_view(request):
                                         203:"operator2",
                                         1001:"operator3",
                                     }
-                                    if operatorlar[int(ip_operator)] != str(request.user.username):
-                                        continue
+                                    # if operatorlar[int(ip_operator)] != str(request.user.username):
+                                    #     continue
                                     wav_file['phone_number'] = f"+{phone_number}" if phone_number != '-' and not phone_number.startswith('+') else phone_number
                                     wav_file['ip_operator'] = ip_operator
                                     wav_file['call_time'] = f"{time[:2]}:{time[2:4]}:{time[4:6]}"
