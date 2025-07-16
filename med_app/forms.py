@@ -84,7 +84,48 @@ class CreateMedCartForm(forms.ModelForm):
             'phone_number': forms.TextInput(attrs={'class': 'form-control'}),
         }
 
-    # __init__ va clean() funksiyalari o‘zgarmaydi
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['city'].required = False
+        self.fields['district'].required = False
+        if 'city' in self.fields:
+            self.fields['city'].widget.attrs.update({'class': 'form-control'})
+        if 'district' in self.fields:
+            self.fields['district'].widget.attrs.update({'class': 'form-control'})
+
+    def clean(self):
+        cleaned_data = super().clean()
+        city = cleaned_data.get('city')
+        new_city_name = cleaned_data.get('new_city_name')
+        district = cleaned_data.get('district')
+        new_district_name = cleaned_data.get('new_district_name')
+
+        if not city and not new_city_name:
+            raise ValidationError("Необходимо выбрать существующий город или ввести название нового города.",
+                                  code='city_required')
+        if city and new_city_name:
+            raise ValidationError("Нельзя одновременно выбрать существующий город и ввести название нового.",
+                                  code='city_ambiguous')
+        if new_city_name and not new_district_name:
+            raise ValidationError("Если вы вводите новый город, необходимо также ввести название нового района.",
+                                  code='new_district_required_for_new_city')
+        if new_city_name and district:
+            raise ValidationError("Если вы вводите новый город, нельзя выбирать район из списка.",
+                                  code='district_invalid_for_new_city')
+
+        if city:
+            if not district and not new_district_name:
+                raise ValidationError(
+                    f"Для города '{city.name}' необходимо выбрать существующий район или ввести название нового.",
+                    code='district_required')
+            if district and new_district_name:
+                raise ValidationError("Нельзя одновременно выбрать существующий район и ввести название нового.",
+                                      code='district_ambiguous')
+            if district and district.city != city:
+                raise ValidationError(f"Выбранный район '{district.name}' не принадлежит городу '{city.name}'.",
+                                      code='district_mismatch')
+
+        return cleaned_data
 
 class SearchMedCardForm(forms.Form):
     first_name = forms.CharField(

@@ -135,6 +135,7 @@ def get_questions(request):
 
 
 def index_view(request):
+    print(request.user.username)  #operator
     context = {
         'title': 'Bosh sahifa',
         'is_staff_user': request.user.is_staff,
@@ -160,7 +161,7 @@ def index_view(request):
 
     if request.user.is_authenticated:
         
-        base_dir = os.path.join(settings.BASE_DIR, '/mnt', 'cdr')
+        base_dir = os.path.join(settings.BASE_DIR, 'mnt', 'cdr')
         local_dir = os.path.join(base_dir, f"{selected_date.year}", f"{selected_date.month:02d}", f"{selected_date.day:02d}")
         wav_files = []
         try:
@@ -193,7 +194,14 @@ def index_view(request):
                                     else:  # q-1001
                                         phone_number = first_num
                                         ip_operator = "1001"
-
+                                    operatorlar={
+                                        202:"operator",
+                                        201:"operator1",
+                                        203:"operator2",
+                                        1001:"operator3",
+                                    }
+                                    if operatorlar[int(ip_operator)] != str(request.user.username):
+                                        continue
                                     wav_file['phone_number'] = f"+{phone_number}" if phone_number != '-' and not phone_number.startswith('+') else phone_number
                                     wav_file['ip_operator'] = ip_operator
                                     wav_file['call_time'] = f"{time[:2]}:{time[2:4]}:{time[4:6]}"
@@ -215,12 +223,16 @@ def index_view(request):
             print(f"DEBUG: Fayl tizimi xatosi: {e}")
 
         try:
-            med_cards = MedCard.objects.filter(
+            print(request.user)
+            med_cards = MedCard.objects.filter((
                 Q(call__created_at__date=selected_date) |
-                Q(visits__visit_time__date=selected_date)
+                Q(visits__visit_time__date=selected_date))
+                & Q(visits__operator=request.user)
             ).distinct().select_related('city', 'district').order_by('last_name')
             if not med_cards.exists():
-                med_cards = MedCard.objects.all().select_related('city', 'district')
+                med_cards = MedCard.objects.filter(
+            visits__operator=request.user
+        ).distinct().select_related('city', 'district').order_by('last_name')
 
             context['med_cards'] = med_cards
         except Exception as e:
@@ -320,11 +332,8 @@ def create_med_cart_post_view(request):
 
             try:
                 med_card.full_clean()
-                print(med_card.pk)
                 med_card.save()
-                print("✅ MedCard saqlandi. PK:", med_card.pk)
             except Exception as e:
-                print("❌ full_clean() yoki save() xatolik:", e)
                 messages.error(request, f"Xatolik: {e}")
                 return render(request, 'med_app/create_med_cart.html', {
                     'form': form,
@@ -342,8 +351,6 @@ def create_med_cart_post_view(request):
             messages.error(request, "Не удалось определить город или район для сохранения медкарты.")
     else:
         messages.error(request, "Пожалуйста, исправьте ошибки в форме.")
-
-    # Xatolik bo‘lsa formni qayta ko‘rsatish
     return render(request, 'med_app/create_med_cart.html', {
         'form': form,
         'title': 'Создать мед. карту'
