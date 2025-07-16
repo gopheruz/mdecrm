@@ -161,7 +161,7 @@ def index_view(request):
 
     if request.user.is_authenticated:
         
-        base_dir = os.path.join(settings.BASE_DIR, 'mnt', 'cdr')
+        base_dir = os.path.join(settings.BASE_DIR, '/mnt', 'cdr')
         local_dir = os.path.join(base_dir, f"{selected_date.year}", f"{selected_date.month:02d}", f"{selected_date.day:02d}")
         wav_files = []
         try:
