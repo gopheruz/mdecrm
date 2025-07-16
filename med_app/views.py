@@ -227,11 +227,9 @@ def index_view(request):
             med_cards = MedCard.objects.filter((
                 Q(call__created_at__date=selected_date) |
                 Q(visits__visit_time__date=selected_date))
-                & Q(visits__operator=request.user)
             ).distinct().select_related('city', 'district').order_by('last_name')
             if not med_cards.exists():
-                med_cards = MedCard.objects.filter(
-            visits__operator=request.user
+                med_cards = MedCard.objects.filter(          
         ).distinct().select_related('city', 'district').order_by('last_name')
 
             context['med_cards'] = med_cards
